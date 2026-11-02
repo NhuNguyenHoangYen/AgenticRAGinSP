@@ -113,23 +113,14 @@ def split_documents(docs):
     return chunks
 
 
-def build_vector_store(embeddings):
+def build_vector_store(embeddings, url=None, collection_name=None):
+    """Connect to Qdrant and return its LangChain vector store.
+
+    Optional URL and collection arguments override QDRANT_URL and
+    QDRANT_COLLECTION_NAME from .env. Defaults to http://localhost:6333.
     """
-    Build and return a vector store using the provided embeddings.
-
-    This function initializes an `Index` object with the given embeddings and
-    returns the vector store associated with it.
-
-    Args:
-        - embeddings: The embeddings function or model used for creating the vector store.
-
-    Returns:
-        - vector_store: The created vector store, which holds the embedded documents.
-    """
-
-    index = Index(embeddings)
-
-    return index.vector_store
+    index = Index(embeddings, url=url, collection_name=collection_name)
+    return index.get_vector_store()
 
 
 def create_rag_agent_exectutor(
@@ -284,7 +275,6 @@ def estimate_tokens(text: str):
     return len(response.tokens)
 
 
-@st.cache_resource(show_spinner=False)
 def process_chunks_with_rate_limit_cohere(
     _chunks, _vectorstore, batch_size=166, token_limit=90000
 ):
@@ -351,7 +341,6 @@ def process_chunks_with_rate_limit_cohere(
     return _vectorstore
 
 
-@st.cache_resource(show_spinner=False)
 def add_chunks_to_vector_store_hf_embeddings(_chunks, _vector_store):
     """
     Add a list of document chunks to the provided vector store using HuggingFace embeddings.
@@ -393,6 +382,7 @@ def add_chunks_to_vector_store_hf_embeddings(_chunks, _vector_store):
 
     except Exception as e:
         st.error(e)
+        raise
 
 
 def reset_memory():

@@ -1,51 +1,69 @@
-"""
-Module for managing a Chroma vector store index using LangChain.
-"""
+"""Create and reuse a Qdrant collection for LangChain document retrieval."""
 
-from typing import List
+import os
+from pathlib import Path
+from typing import List, Optional
 
+from dotenv import load_dotenv
 from langchain_core.documents import Document
-from langchain_community.vectorstores import Chroma
+from langchain_core.embeddings import Embeddings
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams
+
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 
 class Index:
+    """Manage a Qdrant vector store without recreating existing collections.
+
+    URL, collection and optional credentials default to QDRANT_URL,
+    QDRANT_COLLECTION_NAME and QDRANT_API_KEY in .env. Use a separate collection
+    for each embedding model, even if two models have the same vector size.
     """
-    Wrapper class for creating and interacting with a Chroma vector store.
 
-    Attributes:
-        - vector_store (Chroma): An instance of the Chroma vector store.
-    """
-
-    def __init__(self, embeddings):
-        """
-        Initialize the Chroma vector store with a specified embedding function.
-
-        Args:
-            - embeddings: A LangChain-compatible embedding function.
-        """
-
-        self.vector_store = Chroma(
-            collection_name="index-ai-report-2025",
-            embedding_function=embeddings,
-            persist_directory="./chroma-langchain-db",
+    def __init__(
+        self,
+        embeddings: Embeddings,
+        url: Optional[str] = None,
+        collection_name: Optional[str] = None,
+        client: Optional[QdrantClient] = None,
+    ):
+        self.collection_name = (
+            collection_name
+            or os.getenv("QDRANT_COLLECTION_NAME")
+            or "index-ai-report-2025"
+        )
+        self.client = client if client is not None else QdrantClient(
+            url=url or os.getenv("QDRANT_URL") or "http://localhost:6333",
+            api_key=os.getenv("QDRANT_API_KEY") or None,
+            timeout=30,
         )
 
-    def add_documents(self, docs: List[Document]):
-        """
-        Add a list of documents to the vector store.
+        collection_exists = self.client.collection_exists(self.collection_name)
+        if not collection_exists:
+            # Ask the selected embedding provider rather than hardcoding a size.
+            vector_size = len(embeddings.embed_documents(["embedding dimension probe"])[0])
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            )
 
-        Args:
-            - docs (List[Document]): List of LangChain Document objects to be indexed.
-        """
+        self.vector_store = QdrantVectorStore(
+            client=self.client,
+            collection_name=self.collection_name,
+            embedding=embeddings,
+            distance=Distance.COSINE,
+            # Existing collections must match the model's dimension and distance.
+            # New collections were just created from these embeddings.
+            validate_collection_config=collection_exists,
+        )
 
-        _ = self.vector_store.add_documents(documents=docs)
+    def add_documents(self, docs: List[Document]) -> List[str]:
+        """Embed and store passages with their metadata; return point IDs."""
+        return self.vector_store.add_documents(documents=docs)
 
-    def get_vector_store(self):
-        """
-        Retrieve the internal Chroma vector store instance.
-
-        Returns:
-            - Chroma: The Chroma vector store object.
-        """
-
+    def get_vector_store(self) -> QdrantVectorStore:
+        """Return the LangChain adapter used for insertion and MMR retrieval."""
         return self.vector_store
