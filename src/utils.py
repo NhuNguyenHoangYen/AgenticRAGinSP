@@ -133,39 +133,34 @@ def build_vector_store(embeddings):
 
 
 def create_rag_agent_exectutor(
-    cohere_api_key: str, vector_store, number_of_retrieved_documents: int
+    cohere_api_key: str,
+    vector_store,
+    number_of_retrieved_documents: int,
+    llm_type: str = None,
+    openai_api_key: str = None,
+    model_name: str = None,
 ):
+    """Build the agent with the selected Cohere or OpenAI chat model.
+
+    The first three arguments retain compatibility with existing callers.
+    ``llm_type`` overrides LLM_PROVIDER from .env (default: cohere).
+    Explicit credentials and model_name override provider environment settings.
+    For OpenAI-only use, pass an empty string for cohere_api_key.
     """
-    Creates a ReAct RAG agent executor using the provided Cohere API key, vector store,
-    and the number of retrieved documents.
+    provider = (llm_type or os.getenv("LLM_PROVIDER", "cohere")).strip().lower()
+    kwargs = {}
+    if provider == "cohere":
+        kwargs["cohere_api_key"] = cohere_api_key
+    elif provider == "openai":
+        kwargs["openai_api_key"] = openai_api_key
+    if model_name:
+        kwargs["model_name"] = model_name
 
-    This function initializes a Cohere LLM using the provided API key, sets up the ReAct RAG agent with
-    the LLM and vector store, and creates an agent executor that can handle queries using the Retrieve-Ask-Generate
-    approach.
-
-    Args:
-        - cohere_api_key (str): The API key for accessing the Cohere API.
-        - vector_store (langchain.vectorstores.VectorStore): The vector store to be used for document retrieval.
-        - number_of_retrieved_documents (int): The number of documents to retrieve during the "Retrieve" phase.
-
-    Returns:
-        - langchain.agents.AgentExecutor: The created RAG agent executor for processing queries.
-
-    Example:
-        >>> rag_executor = create_rag_agent_exectutor(
-                cohere_api_key="your_cohere_api_key",
-                vector_store=my_vector_store,
-                number_of_retrieved_documents=5
-            )
-        >>> response = rag_executor.run("What is the impact of AI on healthcare?")
-    """
-
-    cohere_llm = LLMFactory.create_llm("cohere", cohere_api_key=cohere_api_key)
-    llm = cohere_llm.get_llm()
-    react_rag_agent = ReActRagAgent(llm, vector_store, number_of_retrieved_documents)
-    rag_agent_executor = react_rag_agent.create_react_agent_executor()
-
-    return rag_agent_executor
+    model = LLMFactory.create_llm(provider, **kwargs)
+    react_rag_agent = ReActRagAgent(
+        model.get_llm(), vector_store, number_of_retrieved_documents
+    )
+    return react_rag_agent.create_react_agent_executor()
 
 
 def process_query(
@@ -176,7 +171,7 @@ def process_query(
 ):
     """
     Processes a user's query using a ReAct RAG agent, retrieving relevant
-    information from the AI Index Report 2025 and generating a response using Cohere's LLM.
+    information from the AI Index Report 2025 using the configured LLM provider.
 
     This function checks if the required inputs are provided, ensures the RAG agent executor is set up,
     and then either generates a response or provides detailed reasoning behind the response. The reasoning
@@ -199,8 +194,17 @@ def process_query(
         >>>                agent_avatar="avatar_image_path")
     """
 
-    if not cohere_api_key:
-        st.error("⚠️ Please enter your Cohere API key in the sidebar.")
+    provider = os.getenv("LLM_PROVIDER", "cohere").strip().lower()
+    if provider not in {"cohere", "openai"}:
+        st.error("LLM_PROVIDER must be cohere or openai.")
+        return
+    api_key = (
+        cohere_api_key or os.getenv("COHERE_API_KEY")
+        if provider == "cohere"
+        else os.getenv("OPENAI_API_KEY")
+    )
+    if not api_key:
+        st.error(f"Set {provider.upper()}_API_KEY in .env to generate answers.")
         return
 
     if not st.session_state.vector_store:

@@ -73,12 +73,22 @@ with st.sidebar:
 
     # 1. Cohere API Key
     cohere_api_key = st.text_input(
-        "Enter Cohere API Key",
+        "Cohere API Key (required for Cohere embeddings or LLM)",
+        value=os.getenv("COHERE_API_KEY", ""),
         type="password",
         placeholder="Enter you Cohere API key",
     )
     if cohere_api_key:
         os.environ["COHERE_API_KEY"] = cohere_api_key
+
+    llm_provider = os.getenv("LLM_PROVIDER", "cohere").strip().lower()
+    llm_api_key = (
+        cohere_api_key if llm_provider == "cohere" else os.getenv("OPENAI_API_KEY", "")
+    )
+    if llm_provider not in {"cohere", "openai"}:
+        st.error("LLM_PROVIDER must be cohere or openai in .env.")
+        st.stop()
+    st.caption(f"Answer generation: {llm_provider} (configured in .env)")
 
     # 2. Select an embedding model
     embeddings_type = st.selectbox(
@@ -125,7 +135,7 @@ with st.sidebar:
             docs = load_pdf(pdf_path)
             st.session_state.docs = docs
 
-            if cohere_api_key:
+            if cohere_api_key or not embeddings_type.startswith("cohere"):
                 with st.spinner("Splitting PDF..."):
                     # Create embeddings and split the documents
                     embeddings = create_embeddings(
@@ -152,6 +162,7 @@ with st.sidebar:
                     )
 
                 st.session_state.vector_store = vector_store
+                st.session_state.rag_agent_executer = None
 
             else:
                 st.error("⚠️ Please enter your Cohere API key to process the document.")
@@ -160,11 +171,13 @@ with st.sidebar:
             os.unlink(pdf_path)
 
     # Number of rendered pages
+    page_count = min(len(st.session_state.docs), 100)
     number_of_rendered_page = st.slider(
         "Number of PDF Rendered Pages",
-        min_value=10,
-        max_value=min(len(st.session_state.docs), 100),
-        value=30,
+        min_value=0,
+        max_value=max(page_count, 1),
+        value=min(30, page_count),
+        disabled=page_count == 0,
         help="Limits the number of previewed pages from the uploaded "
         "PDF to improve performance, as rendering more pages takes "
         "longer. A maximum of `100` pages can be previewed.",
@@ -189,8 +202,8 @@ with st.sidebar:
 
 
 # Disprning if necessary components are missing
-if not cohere_api_key:
-    st.warning("⚠️ Please enter your Cohere API key in the sidebar to continue.")
+if not llm_api_key:
+    st.warning(f"⚠️ Set {llm_provider.upper()}_API_KEY in .env to generate answers.")
 
 elif not st.session_state.vector_store:
     st.warning(

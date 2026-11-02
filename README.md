@@ -76,6 +76,30 @@ agentic-rag-env\Scripts\activate  # On Windows
 pip install -r requirements.txt
 ```
 
+### Configure the answer-generation model
+
+The project loads `.env` from the repository root. Existing shell environment
+variables take precedence. Copy `.env.example` to `.env` if needed, then edit:
+
+```dotenv
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your-openai-api-key
+OPENAI_MODEL=gpt-4.1-mini
+COHERE_API_KEY=
+COHERE_MODEL=command-a-03-2025
+```
+
+To use Cohere for answers, set `LLM_PROVIDER=cohere` and supply `COHERE_API_KEY`.
+Without LLM_PROVIDER, the code defaults to Cohere for backward compatibility.
+Restart Streamlit after changing `.env`. The local `.env` is ignored by Git;
+`.env.example` contains only configuration placeholders.
+
+The LLM provider and embedding provider are independent. With OpenAI answers,
+choose Hugging Face embeddings in the sidebar to avoid requiring a Cohere key.
+Cohere embeddings still require `COHERE_API_KEY`. OpenAI API usage is billed
+separately from ChatGPT subscriptions. The default OpenAI model supports tool
+calling: https://developers.openai.com/api/docs/models/gpt-4.1-mini
+
 ### **4️⃣ Run the Application**
 ```sh
 streamlit run src/app.py

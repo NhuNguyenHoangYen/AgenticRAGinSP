@@ -1,46 +1,51 @@
-"""
-Factory class for creating LLM (Large Language Model) instances.
+"""Create Cohere or OpenAI LLM wrappers using explicit or .env configuration."""
 
-This utility class simplifies the initialization of LLMs by selecting the appropriate
-implementation based on a provided `llm_type`. Currently, only Cohere is supported.
+import os
+from pathlib import Path
 
-Methods:
-    - create_llm(llm_type: str, **kwargs): Returns an instance of a subclass of BaseLLM
-    - based on the given type and configuration.
-"""
-
+from dotenv import load_dotenv
 
 from src.llms.cohere_llm import CohereLLM
+from src.llms.openai_llm import OpenAILLM
+
+
+# Resolve from this file so loading does not depend on the working directory.
+# Existing environment variables take precedence over .env values.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 
 class LLMFactory:
-    """
-    Factory class for creating LLM instances based on a specified provider type.
-    """
+    """Select a provider and validate its credentials before model creation."""
 
     @staticmethod
     def create_llm(llm_type: str, **kwargs):
+        """Create a wrapper; explicit key/model arguments override environment values.
+
+        Providers are ``cohere`` and ``openai``. Configuration uses
+        COHERE_API_KEY / COHERE_MODEL or OPENAI_API_KEY / OPENAI_MODEL.
+        Raises ValueError for an unsupported provider or missing credentials.
         """
-        Create and return an instance of an LLM based on the specified type.
-
-        Args:
-            - llm_type (str): The type/provider of the LLM (e.g., "cohere").
-            - **kwargs: Additional keyword arguments required for initializing the LLM,
-                      such as API keys or model names.
-
-        Returns:
-            - BaseLLM: An instance of a class implementing the BaseLLM interface.
-
-        Raises:
-            - AssertionError: If required arguments are missing (e.g., `cohere_api_key` for Cohere).
-            - ValueError: If the specified `llm_type` is not supported.
-        """
-
-        if llm_type.lower() == "cohere":
-            assert (
-                "cohere_api_key" in kwargs
-            ), "Please, enter pass `cohere_api_key` argument"
-            return CohereLLM(**kwargs)
-
+        provider = llm_type.strip().lower()
+        if provider == "cohere":
+            wrapper = CohereLLM
+            key_argument = "cohere_api_key"
+            default_model = "command-a-03-2025"
+        elif provider == "openai":
+            wrapper = OpenAILLM
+            key_argument = "openai_api_key"
+            default_model = "gpt-4.1-mini"
         else:
             raise ValueError(f"Unsupported LLM type: {llm_type}")
+
+        key_variable = key_argument.upper()
+        api_key = kwargs.get(key_argument) or os.getenv(key_variable)
+        if not api_key or not api_key.strip():
+            raise ValueError(f"Set {key_variable} in .env or pass {key_argument}.")
+
+        kwargs[key_argument] = api_key
+        kwargs["model_name"] = (
+            kwargs.get("model_name")
+            or os.getenv(f"{provider.upper()}_MODEL")
+            or default_model
+        )
+        return wrapper(**kwargs)
