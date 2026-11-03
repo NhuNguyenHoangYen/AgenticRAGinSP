@@ -5,7 +5,7 @@ __pycache__/
 # Ignore virtual environment folder
 agentic-rag-env/
 .venv/
-
+.venv-mac/
 # Ignore Chroma vector database
 chroma-langchain-db/
 

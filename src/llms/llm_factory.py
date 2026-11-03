@@ -1,10 +1,11 @@
-"""Create Cohere or OpenAI LLM wrappers using explicit or .env configuration."""
+"""Create Cohere, OpenAI or Azure OpenAI LLM wrappers using explicit or .env configuration."""
 
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 
+from src.llms.azure_openai_llm import AzureOpenAILLM
 from src.llms.cohere_llm import CohereLLM
 from src.llms.openai_llm import OpenAILLM
 
@@ -21,11 +22,32 @@ class LLMFactory:
     def create_llm(llm_type: str, **kwargs):
         """Create a wrapper; explicit key/model arguments override environment values.
 
-        Providers are ``cohere`` and ``openai``. Configuration uses
+        Providers are ``cohere``, ``openai`` and ``azure_openai``. Azure requires
+        openai_api_key, endpoint, deployment and api_version, or their
+        AZURE_OPENAI_* environment settings. Other providers use
         COHERE_API_KEY / COHERE_MODEL or OPENAI_API_KEY / OPENAI_MODEL.
-        Raises ValueError for an unsupported provider or missing credentials.
+        Raises ValueError for an unsupported provider or missing configuration.
         """
         provider = llm_type.strip().lower()
+        if provider == "azure_openai":
+            variables = {
+                "openai_api_key": "AZURE_OPENAI_API_KEY",
+                "endpoint": "AZURE_OPENAI_ENDPOINT",
+                "deployment": "AZURE_OPENAI_DEPLOYMENT",
+                "api_version": "AZURE_OPENAI_API_VERSION",
+            }
+            config = {
+                argument: kwargs.get(argument) or os.getenv(variable)
+                for argument, variable in variables.items()
+            }
+            missing = [
+                variables[argument] for argument, value in config.items()
+                if not value or not value.strip()
+            ]
+            if missing:
+                raise ValueError("Missing Azure OpenAI configuration: " + ", ".join(missing))
+            return AzureOpenAILLM(**config)
+
         if provider == "cohere":
             wrapper = CohereLLM
             key_argument = "cohere_api_key"

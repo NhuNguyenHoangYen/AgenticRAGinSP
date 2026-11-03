@@ -130,21 +130,28 @@ def create_rag_agent_exectutor(
     llm_type: str = None,
     openai_api_key: str = None,
     model_name: str = None,
+    endpoint: str = None,
+    deployment: str = None,
+    api_version: str = None,
 ):
-    """Build the agent with the selected Cohere or OpenAI chat model.
+    """Build the agent with the selected Cohere, OpenAI or Azure OpenAI model.
 
     The first three arguments retain compatibility with existing callers.
     ``llm_type`` overrides LLM_PROVIDER from .env (default: cohere).
     Explicit credentials and model_name override provider environment settings.
-    For OpenAI-only use, pass an empty string for cohere_api_key.
+    For OpenAI or Azure-only use, pass an empty string for cohere_api_key.
+    Azure uses openai_api_key, endpoint, deployment and api_version, falling
+    back to AZURE_OPENAI_* variables; model_name is for non-Azure providers.
     """
     provider = (llm_type or os.getenv("LLM_PROVIDER", "cohere")).strip().lower()
     kwargs = {}
     if provider == "cohere":
         kwargs["cohere_api_key"] = cohere_api_key
-    elif provider == "openai":
+    elif provider in {"openai", "azure_openai"}:
         kwargs["openai_api_key"] = openai_api_key
-    if model_name:
+    if provider == "azure_openai":
+        kwargs.update(endpoint=endpoint, deployment=deployment, api_version=api_version)
+    if model_name and provider != "azure_openai":
         kwargs["model_name"] = model_name
 
     model = LLMFactory.create_llm(provider, **kwargs)
@@ -186,13 +193,13 @@ def process_query(
     """
 
     provider = os.getenv("LLM_PROVIDER", "cohere").strip().lower()
-    if provider not in {"cohere", "openai"}:
-        st.error("LLM_PROVIDER must be cohere or openai.")
+    if provider not in {"cohere", "openai", "azure_openai"}:
+        st.error("LLM_PROVIDER must be cohere, openai or azure_openai.")
         return
     api_key = (
         cohere_api_key or os.getenv("COHERE_API_KEY")
         if provider == "cohere"
-        else os.getenv("OPENAI_API_KEY")
+        else os.getenv("AZURE_OPENAI_API_KEY" if provider == "azure_openai" else "OPENAI_API_KEY")
     )
     if not api_key:
         st.error(f"Set {provider.upper()}_API_KEY in .env to generate answers.")
@@ -204,11 +211,15 @@ def process_query(
 
     # Get or create the chain
     if st.session_state.rag_agent_executer is None:
-        st.session_state.rag_agent_executer = create_rag_agent_exectutor(
-            cohere_api_key,
-            st.session_state.vector_store,
-            number_of_retrieved_documents,
-        )
+        try:
+            st.session_state.rag_agent_executer = create_rag_agent_exectutor(
+                cohere_api_key,
+                st.session_state.vector_store,
+                number_of_retrieved_documents,
+            )
+        except ValueError as error:
+            st.error(str(error))
+            return
 
     rag_agent_executer = st.session_state.rag_agent_executer
     if not rag_agent_executer:

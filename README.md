@@ -100,6 +100,39 @@ Cohere embeddings still require `COHERE_API_KEY`. OpenAI API usage is billed
 separately from ChatGPT subscriptions. The default OpenAI model supports tool
 calling: https://developers.openai.com/api/docs/models/gpt-4.1-mini
 
+### Use Azure OpenAI for answer generation
+
+Fill in the following settings in the project-root `.env`, then restart Streamlit:
+
+```dotenv
+LLM_PROVIDER=azure_openai
+AZURE_OPENAI_API_KEY=your-azure-resource-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT=your-chat-deployment-name
+AZURE_OPENAI_API_VERSION=your-supported-api-version
+```
+
+Use the Azure resource root endpoint, not a full chat-completions URL. Deployment
+is the deployment name you created in Azure, which can differ from the underlying
+model name. Use an API version supported by your resource and a chat deployment
+that supports tool calling for the RAG agent. Azure credentials are kept separate
+from OPENAI_API_KEY; Azure configuration does not fall back to the public OpenAI key.
+
+The Azure wrapper supports get_llm(), generate() and text streaming, using the
+existing langchain-openai dependency. You can also pass the four settings directly:
+
+```python
+llm = LLMFactory.create_llm(
+    "azure_openai",
+    openai_api_key="your-azure-resource-key",
+    endpoint="https://your-resource.openai.azure.com/",
+    deployment="your-chat-deployment-name",
+    api_version="your-supported-api-version",
+)
+```
+
+Embeddings and Qdrant configuration remain independent of the chat provider.
+
 ### Start the Qdrant vector database
 
 With Docker Desktop running, start the local Qdrant service from the project root:

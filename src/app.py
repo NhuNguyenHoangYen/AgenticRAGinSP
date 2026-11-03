@@ -83,10 +83,12 @@ with st.sidebar:
 
     llm_provider = os.getenv("LLM_PROVIDER", "cohere").strip().lower()
     llm_api_key = (
-        cohere_api_key if llm_provider == "cohere" else os.getenv("OPENAI_API_KEY", "")
+        cohere_api_key if llm_provider == "cohere" else os.getenv(
+            "AZURE_OPENAI_API_KEY" if llm_provider == "azure_openai" else "OPENAI_API_KEY", ""
+        )
     )
-    if llm_provider not in {"cohere", "openai"}:
-        st.error("LLM_PROVIDER must be cohere or openai in .env.")
+    if llm_provider not in {"cohere", "openai", "azure_openai"}:
+        st.error("LLM_PROVIDER must be cohere, openai or azure_openai in .env.")
         st.stop()
     st.caption(f"Answer generation: {llm_provider} (configured in .env)")
 
