@@ -16,6 +16,7 @@ from langchain_core.agents import AgentStep
 from src.data_loading import DataLoader
 from src.embeddings.embeddings_factory import EmbeddingsFactory
 from src.llms.llm_factory import LLMFactory
+from src.llms.llm_config import LLMConfig
 from src.chunking import TextSplitter
 from src.indexing import Index
 from src.rag_agent import ReActRagAgent
@@ -143,18 +144,15 @@ def create_rag_agent_exectutor(
     Azure uses openai_api_key, endpoint, deployment and api_version, falling
     back to AZURE_OPENAI_* variables; model_name is for non-Azure providers.
     """
-    provider = (llm_type or os.getenv("LLM_PROVIDER", "cohere")).strip().lower()
-    kwargs = {}
-    if provider == "cohere":
-        kwargs["cohere_api_key"] = cohere_api_key
-    elif provider in {"openai", "azure_openai"}:
-        kwargs["openai_api_key"] = openai_api_key
-    if provider == "azure_openai":
-        kwargs.update(endpoint=endpoint, deployment=deployment, api_version=api_version)
-    if model_name and provider != "azure_openai":
-        kwargs["model_name"] = model_name
-
-    model = LLMFactory.create_llm(provider, **kwargs)
+    model = LLMFactory.create_llm(
+        llm_type,
+        cohere_api_key=cohere_api_key,
+        openai_api_key=openai_api_key,
+        model_name=model_name,
+        endpoint=endpoint,
+        deployment=deployment,
+        api_version=api_version,
+    )
     react_rag_agent = ReActRagAgent(
         model.get_llm(), vector_store, number_of_retrieved_documents
     )
@@ -192,17 +190,10 @@ def process_query(
         >>>                agent_avatar="avatar_image_path")
     """
 
-    provider = os.getenv("LLM_PROVIDER", "cohere").strip().lower()
-    if provider not in {"cohere", "openai", "azure_openai"}:
-        st.error("LLM_PROVIDER must be cohere, openai or azure_openai.")
-        return
-    api_key = (
-        cohere_api_key or os.getenv("COHERE_API_KEY")
-        if provider == "cohere"
-        else os.getenv("AZURE_OPENAI_API_KEY" if provider == "azure_openai" else "OPENAI_API_KEY")
-    )
-    if not api_key:
-        st.error(f"Set {provider.upper()}_API_KEY in .env to generate answers.")
+    try:
+        LLMConfig.from_env(cohere_api_key=cohere_api_key)
+    except ValueError as error:
+        st.error(str(error))
         return
 
     if not st.session_state.vector_store:

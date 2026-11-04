@@ -19,6 +19,8 @@ from utils import (
     reset_memory,
 )
 
+from src.llms.llm_config import LLMConfig
+
 
 # Page configuration
 st.set_page_config(
@@ -81,16 +83,13 @@ with st.sidebar:
     if cohere_api_key:
         os.environ["COHERE_API_KEY"] = cohere_api_key
 
-    llm_provider = os.getenv("LLM_PROVIDER", "cohere").strip().lower()
-    llm_api_key = (
-        cohere_api_key if llm_provider == "cohere" else os.getenv(
-            "AZURE_OPENAI_API_KEY" if llm_provider == "azure_openai" else "OPENAI_API_KEY", ""
-        )
-    )
-    if llm_provider not in {"cohere", "openai", "azure_openai"}:
-        st.error("LLM_PROVIDER must be cohere, openai or azure_openai in .env.")
-        st.stop()
-    st.caption(f"Answer generation: {llm_provider} (configured in .env)")
+    llm_config_error = None
+    try:
+        llm_config = LLMConfig.from_env(cohere_api_key=cohere_api_key)
+    except ValueError as error:
+        llm_config_error = str(error)
+    else:
+        st.caption(f"Answer generation: {llm_config.provider} (configured in .env)")
 
     # 2. Select an embedding model
     embeddings_type = st.selectbox(
@@ -204,8 +203,8 @@ with st.sidebar:
 
 
 # Disprning if necessary components are missing
-if not llm_api_key:
-    st.warning(f"⚠️ Set {llm_provider.upper()}_API_KEY in .env to generate answers.")
+if llm_config_error:
+    st.warning(llm_config_error)
 
 elif not st.session_state.vector_store:
     st.warning(
