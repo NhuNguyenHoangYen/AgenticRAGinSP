@@ -1,0 +1,213 @@
+[
+  {
+    "test_id": "DOC_QA_016",
+    "category": "multi_hop_reasoning",
+    "priority": "P0",
+    "difficulty": "hard",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Identify the country that produced the most notable AI models among the United States, China, and Europe in 2024, then give that country’s 2024 private AI investment.",
+    "expected": {
+      "answerable": true,
+      "answer": "The United States: 40 notable models and USD 109.1 billion in private AI investment.",
+      "required_facts": [
+        "United States leads the three reported regions with 40 models.",
+        "The same country had USD 109.1 billion in private AI investment in 2024."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 13,
+          "text": "In 2024, U.S.-based institutions produced 40 notable AI models, significantly surpassing China’s 15 and Europe’s combined total of three."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "U.S. private AI investment hit $109.1 billion in 2024, nearly 12 times higher than China’s $9.3 billion and 24 times the U.K.’s $4.5 billion."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "reasoning",
+      "evidence_location": "cross_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "entity_bridge",
+      "cross_page"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_017",
+    "category": "multi_hop_reasoning",
+    "priority": "P1",
+    "difficulty": "hard",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Which country both leads the 2023 AI patent grants highlighted in the report and has the highest AI optimism among the six countries contrasted in the Public Opinion highlights?",
+    "expected": {
+      "answerable": true,
+      "answer": "China: 69.7% of AI patent grants in 2023 and 83% optimism in the cited public-opinion comparison.",
+      "required_facts": [
+        "China accounts for 69.7% of AI patent grants in 2023.",
+        "China has the highest optimism of the six listed countries, at 83%."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 14,
+          "text": "As of 2023, China leads in total AI patents, accounting for 69.7% of all grants, while South Korea and Luxembourg stand out as top AI patent producers on a per capita basis."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 23,
+          "text": "A large majority of people believe AI-powered products and services offer more benefits than drawbacks in countries like China (83%), Indonesia (80%), and Thailand (77%), while only a minority share this view in Canada (40%), the United States (39%), and the Netherlands (36%)."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "reasoning",
+      "evidence_location": "cross_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "entity_intersection",
+      "cross_page"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_018",
+    "category": "multi_hop_reasoning",
+    "priority": "P1",
+    "difficulty": "hard",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "The report discusses a sharp fall in the cost of matching GPT-3.5 on a particular benchmark. On that same benchmark, which 3.8-billion-parameter model exceeded the 60% threshold in 2024?",
+    "expected": {
+      "answerable": true,
+      "answer": "Microsoft Phi-3-mini, on MMLU.",
+      "required_facts": [
+        "The GPT-3.5-equivalent cost comparison uses MMLU.",
+        "Phi-3-mini has 3.8 billion parameters and exceeded the cited MMLU threshold in 2024."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 13,
+          "text": "The cost of querying an AI model that scores the equivalent of GPT-3.5 (64.8) on MMLU, a popular benchmark for assessing language model performance, dropped from $20.00 per million tokens in November 2022 to just $0.07 per million tokens by October 2024 (Gemini-1.5-Flash-8B)"
+        },
+        {
+          "document_id": "doc_001",
+          "page": 16,
+          "text": "In 2022, the smallest model registering a score higher than 60% on MMLU was PaLM, with 540 billion parameters. By 2024, Microsoft’s Phi-3-mini, with just 3.8 billion parameters, achieved the same threshold—the equivalent of a 142-fold reduction in two years."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "reasoning",
+      "evidence_location": "cross_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "benchmark_bridge",
+      "cross_page"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_019",
+    "category": "multi_hop_reasoning",
+    "priority": "P1",
+    "difficulty": "hard",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Among the protein models named as launched in 2024, which belongs to the model family associated with the highlighted 2024 Nobel Prize in Chemistry, and who received that prize?",
+    "expected": {
+      "answerable": true,
+      "answer": "AlphaFold 3 belongs to the AlphaFold family. Demis Hassabis and John Jumper received the Chemistry prize for protein-folding work with AlphaFold.",
+      "required_facts": [
+        "The listed 2024 protein models include AlphaFold 3.",
+        "The Chemistry Nobel highlight links AlphaFold to Demis Hassabis and John Jumper."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 20,
+          "text": "In 2024, several large-scale, high-performance protein sequencing models, including ESM3 and AlphaFold 3, were launched."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 21,
+          "text": "Google DeepMind’s Demis Hassabis and John Jumper won the Nobel Prize in Chemistry for their pioneering work on protein folding with AlphaFold."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "reasoning",
+      "evidence_location": "cross_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "model_family_bridge",
+      "cross_page"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_020",
+    "category": "multi_hop_reasoning",
+    "priority": "P1",
+    "difficulty": "hard",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Among the United States, China, and the U.K., identify the country with the second-largest 2024 private AI investment, then give its optimism percentage from the six-country Public Opinion comparison.",
+    "expected": {
+      "answerable": true,
+      "answer": "China: USD 9.3 billion in private AI investment and 83% optimism.",
+      "required_facts": [
+        "Investment ranking among the three: United States USD 109.1 billion, China USD 9.3 billion, U.K. USD 4.5 billion.",
+        "China is second in this group.",
+        "China optimism: 83%."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "U.S. private AI investment hit $109.1 billion in 2024, nearly 12 times higher than China’s $9.3 billion and 24 times the U.K.’s $4.5 billion."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 23,
+          "text": "A large majority of people believe AI-powered products and services offer more benefits than drawbacks in countries like China (83%), Indonesia (80%), and Thailand (77%), while only a minority share this view in Canada (40%), the United States (39%), and the Netherlands (36%)."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "reasoning",
+      "evidence_location": "cross_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "rank_then_lookup",
+      "cross_page"
+    ]
+  }
+]

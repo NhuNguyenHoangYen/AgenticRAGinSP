@@ -1,0 +1,172 @@
+[
+  {
+    "test_id": "DOC_QA_001",
+    "category": "direct_factual_answer",
+    "priority": "P0",
+    "difficulty": "easy",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "According to the report highlights, how many notable AI models did U.S.-based institutions produce in 2024?",
+    "expected": {
+      "answerable": true,
+      "answer": "40 notable AI models.",
+      "required_facts": [
+        "United States: 40 notable AI models in 2024."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 13,
+          "text": "In 2024, U.S.-based institutions produced 40 notable AI models, significantly surpassing China’s 15 and Europe’s combined total of three."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "factual",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_002",
+    "category": "direct_factual_answer",
+    "priority": "P0",
+    "difficulty": "easy",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "How much private investment did generative AI attract globally in 2024, according to the report highlights?",
+    "expected": {
+      "answerable": true,
+      "answer": "USD 33.9 billion.",
+      "required_facts": [
+        "Global private generative AI investment in 2024: USD 33.9 billion."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "Private investment in generative AI reached $33.9 billion in 2024, up 18.7% from 2023 and over 8.5 times higher than 2022 levels."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "factual",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_003",
+    "category": "direct_factual_answer",
+    "priority": "P1",
+    "difficulty": "easy",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "What percentage of survey respondents reported AI use by their organizations in 2024?",
+    "expected": {
+      "answerable": true,
+      "answer": "78%.",
+      "required_facts": [
+        "Organizational AI use reported by survey respondents: 78% in 2024."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "In 2024, the proportion of survey respondents reporting AI use by their organizations jumped to 78% from 55% in 2023."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "factual",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_004",
+    "category": "direct_factual_answer",
+    "priority": "P1",
+    "difficulty": "easy",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "How many reported AI-related incidents were recorded in 2024 in the report highlights?",
+    "expected": {
+      "answerable": true,
+      "answer": "233 reported incidents.",
+      "required_facts": [
+        "Reported AI-related incidents: 233 in 2024."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 16,
+          "text": "the number of reported AI-related incidents rose to 233 in 2024—a record high and a 56.4% increase over 2023."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "factual",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_005",
+    "category": "direct_factual_answer",
+    "priority": "P1",
+    "difficulty": "easy",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "What MedQA score does the Science and Medicine highlights section report for OpenAI o1?",
+    "expected": {
+      "answerable": true,
+      "answer": "96.0%.",
+      "required_facts": [
+        "OpenAI o1: 96.0% on MedQA."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 20,
+          "text": "OpenAI’s recently released o1 set a new state- of-the-art 96.0% on the MedQA benchmark—a 5.8 percentage point gain over the best score posted in 2023."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "factual",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  }
+]

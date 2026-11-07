@@ -12,6 +12,10 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
 
+from src.observability import get_logger
+
+log = get_logger(__name__)
+
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 
@@ -42,6 +46,7 @@ class Index:
         )
 
         collection_exists = self.client.collection_exists(self.collection_name)
+        log.info("qdrant.collection_checked", collection=self.collection_name, exists=collection_exists)
         if not collection_exists:
             # Ask the selected embedding provider rather than hardcoding a size.
             vector_size = len(embeddings.embed_documents(["embedding dimension probe"])[0])
@@ -49,6 +54,8 @@ class Index:
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
             )
+
+            log.info("qdrant.collection_created", collection=self.collection_name, vector_size=vector_size)
 
         self.vector_store = QdrantVectorStore(
             client=self.client,

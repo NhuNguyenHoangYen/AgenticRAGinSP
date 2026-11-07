@@ -1,5 +1,7 @@
 import os
 import tempfile
+import hashlib
+from uuid import uuid4
 
 from langchain_cohere import CohereEmbeddings
 from langchain_core.messages import HumanMessage
@@ -20,6 +22,12 @@ from utils import (
 )
 
 from src.llms.llm_config import LLMConfig
+from src.observability import (
+    RequestContext, configure_logging, get_logger, request_context,
+)
+
+configure_logging()
+log = get_logger(__name__)
 
 
 # Page configuration
@@ -62,6 +70,12 @@ if "rag_agent_executer" not in st.session_state:
 
 if "docs" not in st.session_state:
     st.session_state.docs = []
+
+
+# Anonymous identifiers are session-local, not authenticated user identities.
+for identity in ("user_id", "chat_id"):
+    if identity not in st.session_state:
+        st.session_state[identity] = uuid4().hex
 
 
 # Load message avatars
@@ -124,52 +138,54 @@ with st.sidebar:
         st.session_state.uploaded_file is None
         or uploaded_file.name != st.session_state.uploaded_file.name
     ):
-        with st.spinner("Processing PDF..."):
-            st.session_state.uploaded_file = uploaded_file
-
-            # Create a temporary file to save the uploaded PDF
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-                tmp_file.write(uploaded_file.getvalue())
-                pdf_path = tmp_file.name
-
-            # Load the PDF
-            docs = load_pdf(pdf_path)
-            st.session_state.docs = docs
-
-            if cohere_api_key or not embeddings_type.startswith("cohere"):
-                with st.spinner("Splitting PDF..."):
-                    # Create embeddings and split the documents
-                    embeddings = create_embeddings(
-                        embeddings_type, cohere_api_key=cohere_api_key
-                    )
-                    st.success("✅ Embeddings created successfully!")
-                    chunks = split_documents(docs)
-
-                st.markdown(
-                    f"📄 Found a total `{len(docs)}` pages splitted into `{len(chunks)}` chunks"
-                )
-
-                # Build vector store
+        document_id = hashlib.sha256(uploaded_file.getvalue()).hexdigest()
+        context = RequestContext.create(
+            st.session_state.user_id, st.session_state.chat_id,
+            ingestion_id=uuid4().hex, document_id=document_id,
+        )
+        with request_context(context), st.spinner("Processing PDF..."):
+            pdf_path = None
+            stage = "configuration"
+            try:
+                log.info("ingestion.started", embedding_model=embeddings_type)
+                if embeddings_type.startswith("cohere") and not cohere_api_key:
+                    raise ValueError("Please enter your Cohere API key to process the document.")
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+                    tmp_file.write(uploaded_file.getvalue())
+                    pdf_path = tmp_file.name
+                stage = "pdf_parsing"
+                docs = load_pdf(pdf_path)
+                stage = "chunking"
+                chunks = split_documents(docs)
+                for position, chunk in enumerate(chunks):
+                    chunk.metadata.update(document_id=document_id,
+                                          chunk_id=f"{document_id}:{position}")
+                stage = "embedding_setup"
+                embeddings = create_embeddings(embeddings_type, cohere_api_key=cohere_api_key)
+                log.info("embedding.initialized", embedding_model=embeddings_type)
+                stage = "indexing"
                 vector_store = build_vector_store(embeddings)
-
-                # Add documents to vectorstore
                 if isinstance(embeddings, CohereEmbeddings):
-                    vector_store = process_chunks_with_rate_limit_cohere(
-                        chunks, vector_store
-                    )
+                    process_chunks_with_rate_limit_cohere(chunks, vector_store)
                 else:
-                    vector_store = add_chunks_to_vector_store_hf_embeddings(
-                        chunks, vector_store
-                    )
-
+                    add_chunks_to_vector_store_hf_embeddings(chunks, vector_store)
+                st.session_state.docs = docs
                 st.session_state.vector_store = vector_store
                 st.session_state.rag_agent_executer = None
-
-            else:
-                st.error("⚠️ Please enter your Cohere API key to process the document.")
-
-            # Clean up the temporary file
-            os.unlink(pdf_path)
+                st.session_state.uploaded_file = uploaded_file
+                st.session_state.document_id = document_id
+                st.session_state.embedding_model = embeddings_type
+                log.info("ingestion.completed", page_count=len(docs), chunk_count=len(chunks))
+                st.success(f"Indexed {len(docs)} pages as {len(chunks)} chunks.")
+            except Exception:
+                log.exception("ingestion.failed", stage=stage)
+                st.error("Could not index the document. Check the application logs for details.")
+            finally:
+                if pdf_path:
+                    try:
+                        os.unlink(pdf_path)
+                    except OSError:
+                        log.warning("ingestion.temp_cleanup_failed")
 
     # Number of rendered pages
     page_count = min(len(st.session_state.docs), 100)
@@ -198,6 +214,7 @@ with st.sidebar:
             st.session_state.messages = []
             st.success("✅ Conversation cleared successfully!")
             reset_memory()
+            st.session_state.chat_id = uuid4().hex
         else:
             st.info("There are no messages to clear!")
 
@@ -257,4 +274,10 @@ if st.session_state.vector_store:
                 st.session_state.messages.append(HumanMessage(content=query))
 
                 # Process the query
-                process_query(query, cohere_api_key, agent_avatar)
+                context = RequestContext.create(
+                    st.session_state.user_id, st.session_state.chat_id,
+                    turn_id=uuid4().hex,
+                    document_id=st.session_state.get("document_id"),
+                )
+                with request_context(context):
+                    process_query(query, cohere_api_key, agent_avatar)

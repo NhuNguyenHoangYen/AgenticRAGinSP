@@ -1,0 +1,6 @@
+# Install in an isolated Python 3.11 evaluation environment (see docs/evaluation.md).
+# The application environment is used separately for --collect-only.
+deepeval==4.3.3
+
+# Same Cohere provider support as the app; imported only when selected.
+cohere==5.15.0

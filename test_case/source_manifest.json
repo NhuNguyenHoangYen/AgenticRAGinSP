@@ -1,0 +1,19 @@
+{
+  "document_id": "doc_001",
+  "filename": "2504.07139v3.pdf",
+  "title": "Artificial Intelligence Index Report 2025",
+  "sha256": "eef7a13bf536a20dc29a95943c3202942fa00ed5d1030c06eabce9c31e9da07a",
+  "pdf_page_count": 457,
+  "page_numbering": "1-based physical PDF page; printed page number is generally PDF page minus one",
+  "test_count": 40,
+  "files": {
+    "direct_factual_answer.json": 5,
+    "list_extraction.json": 5,
+    "multi_fact_synthesis.json": 5,
+    "multi_hop_reasoning.json": 5,
+    "numerical_calculation.json": 5,
+    "unanswerable_question.json": 5,
+    "partially_answerable.json": 5,
+    "language_switching.json": 5
+  }
+}

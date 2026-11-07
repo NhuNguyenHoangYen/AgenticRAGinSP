@@ -20,6 +20,10 @@ from src.llms.llm_config import LLMConfig
 from src.chunking import TextSplitter
 from src.indexing import Index
 from src.rag_agent import ReActRagAgent
+from src.observability import EvaluationRecorder, get_logger
+from src.observability.callbacks import AgentLoggingCallback
+
+log = get_logger(__name__)
 
 
 def response_generator(text: str):
@@ -60,8 +64,10 @@ def load_pdf(pdf_file_path: str):
         - list: A list of `Document` objects extracted from the PDF file.
     """
 
-    loader = DataLoader(file_path=pdf_file_path)
-    docs = loader.get_docs()
+    with log.operation("pdf.parsing"):
+        loader = DataLoader(file_path=pdf_file_path)
+        docs = loader.get_docs()
+    log.info("pdf.parsed", page_count=len(docs))
 
     return docs
 
@@ -110,7 +116,9 @@ def split_documents(docs):
     """
 
     text_splitter = TextSplitter()
-    chunks = text_splitter.split_documents(docs)
+    with log.operation("document.chunking", chunk_size=8000, chunk_overlap=800):
+        chunks = text_splitter.split_documents(docs)
+    log.info("document.chunked", chunk_count=len(chunks))
     return chunks
 
 
@@ -120,7 +128,8 @@ def build_vector_store(embeddings, url=None, collection_name=None):
     Optional URL and collection arguments override QDRANT_URL and
     QDRANT_COLLECTION_NAME from .env. Defaults to http://localhost:6333.
     """
-    index = Index(embeddings, url=url, collection_name=collection_name)
+    with log.operation("qdrant.connection"):
+        index = Index(embeddings, url=url, collection_name=collection_name)
     return index.get_vector_store()
 
 
@@ -191,8 +200,9 @@ def process_query(
     """
 
     try:
-        LLMConfig.from_env(cohere_api_key=cohere_api_key)
+        settings = LLMConfig.from_env(cohere_api_key=cohere_api_key)
     except ValueError as error:
+        log.warning("question.configuration_invalid", error_type=type(error).__name__)
         st.error(str(error))
         return
 
@@ -200,57 +210,66 @@ def process_query(
         st.error("⚠️ Please upload the AI Index Report 2025 PDF first.")
         return
 
-    # Get or create the chain
-    if st.session_state.rag_agent_executer is None:
-        try:
+    configuration = dict(
+        provider=settings.provider, model=settings.model_name,
+        deployment=settings.deployment, api_version=settings.api_version,
+        prompt_version="v1", search_type="mmr",
+        k=number_of_retrieved_documents, fetch_k=number_of_retrieved_documents * 4,
+        embedding_model=st.session_state.get("embedding_model"),
+    )
+    recorder = EvaluationRecorder(query, configuration)
+    callback = AgentLoggingCallback(recorder, configuration)
+    started = time.perf_counter()
+    stage = "agent_setup"
+    log.info("question.started")
+    try:
+        if st.session_state.rag_agent_executer is None:
             st.session_state.rag_agent_executer = create_rag_agent_exectutor(
-                cohere_api_key,
-                st.session_state.vector_store,
+                cohere_api_key, st.session_state.vector_store,
                 number_of_retrieved_documents,
             )
-        except ValueError as error:
-            st.error(str(error))
-            return
-
-    rag_agent_executer = st.session_state.rag_agent_executer
-    if not rag_agent_executer:
-        return
-
-    with st.chat_message("assistant", avatar=agent_avatar):
-        if st.session_state.show_reasoning:
-            with st.spinner("Thinking..."):
-                tool_calls = []
-                response = rag_agent_executer.stream({"input": query})
-                for event in response:
-                    for _, value in event.items():
-                        for step in value:
+        executor = st.session_state.rag_agent_executer
+        if recorder.enabled:
+            recorder.record["conversation_history"] = [
+                dict(role=message.type, content=message.content)
+                for message in executor.memory.chat_memory.messages
+            ]
+        stage = "agent_execution"
+        output = None
+        with st.chat_message("assistant", avatar=agent_avatar):
+            if st.session_state.show_reasoning:
+                with st.spinner("Thinking..."):
+                    for event in executor.stream(
+                        {"input": query}, config={"callbacks": [callback]}
+                    ):
+                        for step in event.get("steps", []):
                             if isinstance(step, AgentStep):
-                                action = step.action
-                                if action.tool_input not in tool_calls:
-                                    with st.expander("Reasoning Step", expanded=True):
-                                        st.markdown(
-                                            f"`✅ {action.message_log[-1].content}`"
-                                        )
-
-                                        st.markdown("##### 🔧Tools:")
-                                        st.markdown(
-                                            f"⚙️ **Invoking Tool**: `{action.tool}` with `{action.tool_input}`"
-                                        )
-                                        st.write("---")
-
-                                        st.markdown("##### 📄 Retrived Data:")
-                                        st.markdown(f"{step.observation}")
-                                        tool_calls.append(action.tool_input)
-
-            st.write_stream(response_generator(event["output"]))
-            st.session_state.messages.append(AIMessage(event["output"]))
-
-        else:
-            with st.spinner("Generating Response..."):
-                response = rag_agent_executer.invoke({"input": query})
-
-            st.write_stream(response_generator(response["output"]))
-            st.session_state.messages.append(AIMessage(response["output"]))
+                                with st.expander("Retrieval Step", expanded=True):
+                                    st.markdown(f"Tool: `{step.action.tool}`")
+                                    st.write(step.action.tool_input)
+                                    st.write(step.observation)
+                        if "output" in event:
+                            output = event["output"]
+            else:
+                with st.spinner("Generating Response..."):
+                    response = executor.invoke(
+                        {"input": query}, config={"callbacks": [callback]}
+                    )
+                    output = response["output"]
+            if output is None:
+                raise RuntimeError("Agent finished without a final answer")
+            recorder.finish(output=output)
+            log.info("question.completed", duration_ms=round(
+                (time.perf_counter() - started) * 1000, 2))
+            stage = "answer_display"
+            st.write_stream(response_generator(output))
+            st.session_state.messages.append(AIMessage(output))
+    except Exception as error:
+        recorder.finish(status="failed", stage=stage, error_type=type(error).__name__)
+        log.exception("question.failed", stage=stage)
+        st.error("Could not generate an answer. Check the application logs for details.")
+    finally:
+        recorder.finish(status="aborted", stage=stage)
 
 
 def estimate_tokens(text: str):
@@ -294,6 +313,7 @@ def process_chunks_with_rate_limit_cohere(
     Returns:
         - vectorstore (object): The vectorstore with added documents.
     """
+    log.info("indexing.started", chunk_count=len(_chunks), embedding_provider="cohere")
     total_batches = (len(_chunks) + batch_size - 1) // batch_size
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -312,6 +332,7 @@ def process_chunks_with_rate_limit_cohere(
         )
 
         if batch_tokens > token_limit:
+            log.warning("embedding.batch_split", batch_tokens=batch_tokens)
             st.warning(f"⚠️ Batch too large (~{batch_tokens} tokens), splitting... ")
             for doc in batch:
                 doc_tokens = estimate_tokens(doc.page_content)
@@ -322,6 +343,7 @@ def process_chunks_with_rate_limit_cohere(
         else:
             _vectorstore.add_documents(batch)
 
+        log.info("indexing.batch_completed", batch=current_batch, chunk_count=len(batch))
         # update progress
         progress = min((i + batch_size) / len(_chunks), 1.0)
         progress_bar.progress(progress)
@@ -339,6 +361,7 @@ def process_chunks_with_rate_limit_cohere(
             # reset window
             window_start = time.time()
 
+    log.info("indexing.completed", chunk_count=len(_chunks))
     status_text.success("✅ Batches have been processed successfully!")
     return _vectorstore
 
@@ -363,6 +386,7 @@ def add_chunks_to_vector_store_hf_embeddings(_chunks, _vector_store):
     """
 
     try:
+        log.info("indexing.started", chunk_count=len(_chunks), embedding_provider="huggingface")
         # * batch_size is set to 166 as this is the largest batch size supported by
         # * the HuggingFace embedding model
         batch_size = 166
@@ -375,15 +399,16 @@ def add_chunks_to_vector_store_hf_embeddings(_chunks, _vector_store):
             batch = _chunks[start:end]
 
             # Add documents in batch
-            _vector_store.add_documents(batch)
+            with log.operation("indexing.batch", chunk_count=len(batch)):
+                _vector_store.add_documents(batch)
             progress = int((end) / total_chunks * 100)
             progress_bar.progress(progress)
             progress_text.markdown(f"Processing chunk: `[{end}/{total_chunks}]`")
 
+        log.info("indexing.completed", chunk_count=total_chunks)
         return _vector_store
 
-    except Exception as e:
-        st.error(e)
+    except Exception:
         raise
 
 

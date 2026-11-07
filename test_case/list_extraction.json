@@ -1,0 +1,201 @@
+[
+  {
+    "test_id": "DOC_QA_006",
+    "category": "list_extraction",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "List the three benchmarks whose improvements are highlighted at the start of the Technical Performance chapter highlights.",
+    "expected": {
+      "answerable": true,
+      "answer": "MMMU, GPQA, and SWE-bench.",
+      "required_facts": [
+        "MMMU",
+        "GPQA",
+        "SWE-bench"
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 14,
+          "text": "AI performance on these benchmarks saw remarkable improvements, with gains of 18.8 and 48.9 percentage points on MMMU and GPQA, respectively."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 14,
+          "text": "On SWE-bench, AI systems could solve just 4.4% of coding problems in 2023—a figure that jumped to 71.7% in 2024."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "list",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "complete_list"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_007",
+    "category": "list_extraction",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "List all five states identified as having enacted laws regulating deepfakes in elections before 2024.",
+    "expected": {
+      "answerable": true,
+      "answer": "California, Michigan, Washington, Texas, and Minnesota.",
+      "required_facts": [
+        "California",
+        "Michigan",
+        "Washington",
+        "Texas",
+        "Minnesota"
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 22,
+          "text": "Before 2024, only five states—California, Michigan, Washington, Texas, and Minnesota—had enacted laws regulating deepfakes in elections."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "list",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "complete_list"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_008",
+    "category": "list_extraction",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "In the Science and Medicine highlights, list the three specialized medical foundation models and their respective specialties.",
+    "expected": {
+      "answerable": true,
+      "answer": "EchoCLIP: echocardiology; VisionFM: ophthalmology; ChexAgent: radiology.",
+      "required_facts": [
+        "EchoCLIP — echocardiology",
+        "VisionFM — ophthalmology",
+        "ChexAgent — radiology"
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 21,
+          "text": "ranging from general-purpose multimodal models like Med-Gemini to specialized models such as EchoCLIP for echocardiology, VisionFM for ophthalmology, and ChexAgent for radiology."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "list",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "entity_attribute_mapping"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_009",
+    "category": "list_extraction",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "List the six countries and optimism percentages explicitly contrasted in the Public Opinion highlights.",
+    "expected": {
+      "answerable": true,
+      "answer": "China 83%; Indonesia 80%; Thailand 77%; Canada 40%; United States 39%; Netherlands 36%.",
+      "required_facts": [
+        "China: 83%",
+        "Indonesia: 80%",
+        "Thailand: 77%",
+        "Canada: 40%",
+        "United States: 39%",
+        "Netherlands: 36%"
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 23,
+          "text": "A large majority of people believe AI-powered products and services offer more benefits than drawbacks in countries like China (83%), Indonesia (80%), and Thailand (77%), while only a minority share this view in Canada (40%), the United States (39%), and the Netherlands (36%)."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "list",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "entity_attribute_mapping"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_010",
+    "category": "list_extraction",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Name the four researchers recognized by the two AI-related Nobel Prizes highlighted for 2024, grouped by prize.",
+    "expected": {
+      "answerable": true,
+      "answer": "Chemistry: Demis Hassabis and John Jumper. Physics: John Hopfield and Geoffrey Hinton.",
+      "required_facts": [
+        "Chemistry: Demis Hassabis and John Jumper",
+        "Physics: John Hopfield and Geoffrey Hinton"
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 21,
+          "text": "Google DeepMind’s Demis Hassabis and John Jumper won the Nobel Prize in Chemistry for their pioneering work on protein folding with AlphaFold."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 21,
+          "text": "John Hopfield and Geoffrey Hinton received the Nobel Prize in Physics for their foundational contributions to neural networks."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "list",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "grouped_list"
+    ]
+  }
+]

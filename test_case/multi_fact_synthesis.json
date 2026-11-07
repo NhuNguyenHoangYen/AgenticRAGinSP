@@ -1,0 +1,201 @@
+[
+  {
+    "test_id": "DOC_QA_011",
+    "category": "multi_fact_synthesis",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "How do the highlights distinguish industry’s and academia’s roles in AI research and model development?",
+    "expected": {
+      "answerable": true,
+      "answer": "Industry produced nearly 90% of notable AI models in 2024, versus 60% in 2023, while academia remained the leading institutional producer of top-100-cited publications over the past three years.",
+      "required_facts": [
+        "Industry: nearly 90% of notable models in 2024, compared with 60% in 2023.",
+        "Academia: leading institutional producer of top-100-cited publications over the past three years."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 13,
+          "text": "nearly 90% of notable models in 2024 (compared to 60% in 2023) originating from industry."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 13,
+          "text": "Academia has remained the single leading institutional producer of highly cited (top 100) publications over the past three years."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "synthesis",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_012",
+    "category": "multi_fact_synthesis",
+    "priority": "P0",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Summarize the changes in general organizational AI use and generative AI use between 2023 and 2024.",
+    "expected": {
+      "answerable": true,
+      "answer": "Reported organizational AI use rose from 55% to 78%. Reported generative AI use in at least one business function rose from 33% to 71%. These refer to different adoption measures.",
+      "required_facts": [
+        "AI use: 55% in 2023 to 78% in 2024.",
+        "Generative AI in at least one business function: 33% to 71%.",
+        "The two percentages measure different kinds of adoption."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "In 2024, the proportion of survey respondents reporting AI use by their organizations jumped to 78% from 55% in 2023."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "the number of respondents who reported using generative AI in at least one business function more than doubled—from 33% in 2023 to 71% last year."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "synthesis",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_013",
+    "category": "multi_fact_synthesis",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "What tension do the highlights identify between U.S. CS teachers’ support for AI education and their readiness to teach it?",
+    "expected": {
+      "answerable": true,
+      "answer": "81% support including AI use and learning in foundational CS education, but fewer than half of high-school CS teachers feel equipped to teach AI.",
+      "required_facts": [
+        "81% support including AI in foundational CS learning.",
+        "Fewer than half of high-school CS teachers feel equipped to teach AI."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 22,
+          "text": "Despite the 81% of CS teachers who agree that using AI and learning about AI should be included in a foundational CS learning experience, fewer than half of high school CS teachers feel equipped to teach AI."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "synthesis",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_014",
+    "category": "multi_fact_synthesis",
+    "priority": "P0",
+    "difficulty": "hard",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Using the highlights, explain why better model performance should not be equated with reliable complex reasoning.",
+    "expected": {
+      "answerable": true,
+      "answer": "MMMU and GPQA improved by 18.8 and 48.9 percentage points, and SWE-bench rose from 4.4% to 71.7%. Despite these gains, the report says systems still cannot reliably solve certain logically verifiable arithmetic and planning tasks, especially larger instances.",
+      "required_facts": [
+        "MMMU gain: 18.8 percentage points.",
+        "GPQA gain: 48.9 percentage points.",
+        "SWE-bench: 4.4% to 71.7%.",
+        "Reliability limitations remain for arithmetic and planning, especially larger instances."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 14,
+          "text": "AI performance on these benchmarks saw remarkable improvements, with gains of 18.8 and 48.9 percentage points on MMMU and GPQA, respectively."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 14,
+          "text": "On SWE-bench, AI systems could solve just 4.4% of coding problems in 2023—a figure that jumped to 71.7% in 2024."
+        },
+        {
+          "document_id": "doc_001",
+          "page": 16,
+          "text": "these systems still cannot reliably solve problems for which provably correct solutions can be found using logical reasoning, such as arithmetic and planning, especially on instances larger than those they were trained on."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "synthesis",
+      "evidence_location": "cross_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_015",
+    "category": "multi_fact_synthesis",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "How do the reported AI-agent results depend on the available time budget?",
+    "expected": {
+      "answerable": true,
+      "answer": "On RE-Bench, top AI systems score four times higher than human experts with a two-hour budget, but humans outperform AI two to one at 32 hours. The highlights do not establish universal AI superiority across time budgets.",
+      "required_facts": [
+        "Two-hour budget: top AI systems score four times higher than human experts.",
+        "32-hour budget: human performance exceeds AI two to one.",
+        "Performance depends on the time horizon."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 16,
+          "text": "In short time-horizon settings (two-hour budget), top AI systems score four times higher than human experts, but as the time budget increases, human performance surpasses AI—outscoring it two to one at 32 hours."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "synthesis",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document"
+    ]
+  }
+]

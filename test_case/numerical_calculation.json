@@ -1,0 +1,189 @@
+[
+  {
+    "test_id": "DOC_QA_021",
+    "category": "numerical_calculation",
+    "priority": "P0",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Using the organizational AI-use percentages reported for 2023 and 2024, what was the increase in percentage points?",
+    "expected": {
+      "answerable": true,
+      "answer": "23 percentage points: 78% − 55% = 23 percentage points.",
+      "required_facts": [
+        "2023: 55%.",
+        "2024: 78%.",
+        "78 − 55 = 23 percentage points; this is not a 23% relative increase."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "In 2024, the proportion of survey respondents reporting AI use by their organizations jumped to 78% from 55% in 2023."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "calculation",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "percentage_points"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_022",
+    "category": "numerical_calculation",
+    "priority": "P0",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Using the highlighted 2024 figures, how much greater was U.S. private AI investment than China and the U.K. combined?",
+    "expected": {
+      "answerable": true,
+      "answer": "USD 95.3 billion: 109.1 − (9.3 + 4.5) = 95.3 billion.",
+      "required_facts": [
+        "United States: USD 109.1 billion.",
+        "China: USD 9.3 billion; U.K.: USD 4.5 billion.",
+        "Combined China and U.K.: USD 13.8 billion.",
+        "Difference: USD 95.3 billion."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "U.S. private AI investment hit $109.1 billion in 2024, nearly 12 times higher than China’s $9.3 billion and 24 times the U.K.’s $4.5 billion."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "calculation",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "aggregation",
+      "subtraction"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_023",
+    "category": "numerical_calculation",
+    "priority": "P1",
+    "difficulty": "hard",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "From the stated inference prices of $20.00 and $0.07 per million tokens, calculate the percentage price reduction. Round to two decimal places.",
+    "expected": {
+      "answerable": true,
+      "answer": "99.65%: ((20.00 − 0.07) / 20.00) × 100 = 99.65%.",
+      "required_facts": [
+        "Original price: USD 20.00 per million tokens.",
+        "Later price: USD 0.07 per million tokens.",
+        "Relative price reduction: 99.65%."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 13,
+          "text": "The cost of querying an AI model that scores the equivalent of GPT-3.5 (64.8) on MMLU, a popular benchmark for assessing language model performance, dropped from $20.00 per million tokens in November 2022 to just $0.07 per million tokens by October 2024 (Gemini-1.5-Flash-8B)"
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "calculation",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "relative_change",
+      "rounding"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_024",
+    "category": "numerical_calculation",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "By how many did the number of AI-related U.S. federal regulations and the number of issuing agencies increase from 2023 to 2024?",
+    "expected": {
+      "answerable": true,
+      "answer": "Regulations increased by 34 (59 − 25); issuing agencies increased by 21 (42 − 21).",
+      "required_facts": [
+        "Regulations: 25 to 59, increase 34.",
+        "Agencies: 21 to 42, increase 21."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 22,
+          "text": "In 2024, 59 AI-related regulations were introduced—more than double the 25 recorded in 2023. These regulations came from 42 unique agencies, twice the 21 agencies that issued them in 2023."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "calculation",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "multiple_outputs"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_025",
+    "category": "numerical_calculation",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Using the counts in the Responsible AI highlights, how many more RAI papers were accepted at leading AI conferences in 2024 than in 2023?",
+    "expected": {
+      "answerable": true,
+      "answer": "286 more papers: 1,278 − 992 = 286.",
+      "required_facts": [
+        "2023: 992 papers.",
+        "2024: 1,278 papers.",
+        "Increase: 286 papers."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "The number of RAI papers accepted at leading AI conferences increased by 28.8%, from 992 in 2023 to 1,278 in 2024"
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "calculation",
+      "evidence_location": "single_page",
+      "language": "english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "subtraction"
+    ]
+  }
+]

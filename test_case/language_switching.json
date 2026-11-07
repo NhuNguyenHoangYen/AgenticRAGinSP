@@ -1,0 +1,189 @@
+[
+  {
+    "test_id": "DOC_QA_036",
+    "category": "language_switching",
+    "priority": "P0",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Theo báo cáo, tỷ lệ người trả lời khảo sát cho biết tổ chức của họ sử dụng AI năm 2024 là bao nhiêu? Trả lời bằng tiếng Việt.",
+    "expected": {
+      "answerable": true,
+      "answer": "Tỷ lệ là 78% trong năm 2024.",
+      "required_facts": [
+        "78% trong năm 2024.",
+        "Câu trả lời bằng tiếng Việt."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "In 2024, the proportion of survey respondents reporting AI use by their organizations jumped to 78% from 55% in 2023."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "factual",
+      "evidence_location": "single_page",
+      "language": "vietnamese",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "vietnamese_query_english_source",
+      "answer_in_vietnamese"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_037",
+    "category": "language_switching",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "How much private investment did generative AI receive globally in 2024? Answer only in Vietnamese.",
+    "expected": {
+      "answerable": true,
+      "answer": "Đầu tư tư nhân toàn cầu vào AI tạo sinh đạt 33,9 tỷ USD trong năm 2024.",
+      "required_facts": [
+        "Đầu tư tư nhân toàn cầu vào AI tạo sinh năm 2024: 33,9 tỷ USD.",
+        "Trả lời bằng tiếng Việt, không đổi sai đơn vị billion thành triệu."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "Private investment in generative AI reached $33.9 billion in 2024, up 18.7% from 2023 and over 8.5 times higher than 2022 levels."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "factual",
+      "evidence_location": "single_page",
+      "language": "english_to_vietnamese",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "answer_language_control",
+      "unit_preservation"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_038",
+    "category": "language_switching",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Theo phần điểm nổi bật của báo cáo, Hoa Kỳ tạo ra bao nhiêu mô hình AI đáng chú ý trong năm 2024? Please answer in English.",
+    "expected": {
+      "answerable": true,
+      "answer": "U.S.-based institutions produced 40 notable AI models in 2024.",
+      "required_facts": [
+        "United States: 40 notable AI models in 2024.",
+        "Answer in English."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 13,
+          "text": "In 2024, U.S.-based institutions produced 40 notable AI models, significantly surpassing China’s 15 and Europe’s combined total of three."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "factual",
+      "evidence_location": "single_page",
+      "language": "vietnamese_to_english",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "answer_language_control"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_039",
+    "category": "language_switching",
+    "priority": "P0",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Tỷ lệ sử dụng AI tăng từ 55% năm 2023 lên 78% năm 2024. What is the increase in percentage points? Trả lời bằng tiếng Việt và trình bày phép tính.",
+    "expected": {
+      "answerable": true,
+      "answer": "Mức tăng là 23 điểm phần trăm: 78% − 55% = 23 điểm phần trăm.",
+      "required_facts": [
+        "78 − 55 = 23 điểm phần trăm.",
+        "Không nhầm mức tăng điểm phần trăm với tỷ lệ tăng tương đối.",
+        "Trả lời bằng tiếng Việt."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 18,
+          "text": "In 2024, the proportion of survey respondents reporting AI use by their organizations jumped to 78% from 55% in 2023."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "calculation",
+      "evidence_location": "single_page",
+      "language": "mixed_english_vietnamese",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "code_switching",
+      "percentage_points"
+    ]
+  },
+  {
+    "test_id": "DOC_QA_040",
+    "category": "language_switching",
+    "priority": "P1",
+    "difficulty": "medium",
+    "document_ids": [
+      "doc_001"
+    ],
+    "question": "Hãy liệt kê ba mô hình nền tảng y tế chuyên biệt trong phần điểm nổi bật, kèm chuyên khoa tương ứng. Giữ nguyên tên mô hình và trả lời bằng tiếng Việt.",
+    "expected": {
+      "answerable": true,
+      "answer": "EchoCLIP: siêu âm tim; VisionFM: nhãn khoa; ChexAgent: chẩn đoán hình ảnh (radiology).",
+      "required_facts": [
+        "EchoCLIP — siêu âm tim.",
+        "VisionFM — nhãn khoa.",
+        "ChexAgent — chẩn đoán hình ảnh (radiology).",
+        "Giữ nguyên tên mô hình và trả lời bằng tiếng Việt."
+      ],
+      "evidence": [
+        {
+          "document_id": "doc_001",
+          "page": 21,
+          "text": "ranging from general-purpose multimodal models like Med-Gemini to specialized models such as EchoCLIP for echocardiology, VisionFM for ophthalmology, and ChexAgent for radiology."
+        }
+      ]
+    },
+    "dimensions": {
+      "question_type": "list",
+      "evidence_location": "single_page",
+      "language": "vietnamese",
+      "conversation": "single_turn",
+      "document_structure": "prose"
+    },
+    "tags": [
+      "single_document",
+      "entity_preservation",
+      "vietnamese_query_english_source"
+    ]
+  }
+]

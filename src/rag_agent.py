@@ -100,7 +100,7 @@ class ReActRagAgent:
         self.react_agent_executor = AgentExecutor(
             agent=self.agent,
             tools=self.tools,
-            verbose=True,
+            verbose=False,
             handle_parsing_errors=True,
             return_intermediate_steps=True,
             memory=self.memory,

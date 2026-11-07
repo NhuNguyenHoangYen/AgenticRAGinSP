@@ -13,3 +13,11 @@ chroma-langchain-db/
 .env
 .env.*
 !.env.example
+
+# Operational logs and private evaluation captures
+logs/
+
+# Evaluation environment and generated answer/score artifacts
+.venv-eval/
+evaluation_results/
+.deepeval/
