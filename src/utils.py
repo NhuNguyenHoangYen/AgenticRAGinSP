@@ -13,7 +13,8 @@ from langchain_core.messages import AIMessage
 from langchain_core.agents import AgentStep
 
 # local
-from src.data_loading import DataLoader
+from pathlib import Path
+from src.document_validation import DocumentValidator
 from src.embeddings.embeddings_factory import EmbeddingsFactory
 from src.llms.llm_factory import LLMFactory
 from src.llms.llm_config import LLMConfig
@@ -50,26 +51,20 @@ def response_generator(text: str):
         time.sleep(0.00001)
 
 
+def load_document(content: bytes, filename: str):
+    """Validate and parse one upload before embedding; returns ParsedDocument."""
+    with log.operation("document.parsing"):
+        parsed = DocumentValidator().parse(content, filename)
+    log.info("document.parsed", section_count=len(parsed.documents), file_type=parsed.extension)
+    for warning in parsed.warnings:
+        log.warning("document.extraction_warning", message=warning)
+    return parsed
+
+
 def load_pdf(pdf_file_path: str):
-    """
-    Load and extract documents from a PDF file.
-
-    This function initializes a `DataLoader` instance with the given PDF file path,
-    loads the documents from the PDF, and returns the extracted documents.
-
-    Args:
-        - pdf_file_path (str): The file path to the PDF document to be loaded.
-
-    Returns:
-        - list: A list of `Document` objects extracted from the PDF file.
-    """
-
-    with log.operation("pdf.parsing"):
-        loader = DataLoader(file_path=pdf_file_path)
-        docs = loader.get_docs()
-    log.info("pdf.parsed", page_count=len(docs))
-
-    return docs
+    """Backward-compatible path loader; new upload callers use load_document."""
+    path = Path(pdf_file_path)
+    return load_document(path.read_bytes(), path.name).documents
 
 
 def create_embeddings(embedding_type_selection: str, **kwargs):
@@ -143,6 +138,7 @@ def create_rag_agent_exectutor(
     endpoint: str = None,
     deployment: str = None,
     api_version: str = None,
+    document_id: str = None,
 ):
     """Build the agent with the selected Cohere, OpenAI or Azure OpenAI model.
 
@@ -163,7 +159,7 @@ def create_rag_agent_exectutor(
         api_version=api_version,
     )
     react_rag_agent = ReActRagAgent(
-        model.get_llm(), vector_store, number_of_retrieved_documents
+        model.get_llm(), vector_store, number_of_retrieved_documents, document_id=document_id
     )
     return react_rag_agent.create_react_agent_executor()
 
@@ -176,7 +172,7 @@ def process_query(
 ):
     """
     Processes a user's query using a ReAct RAG agent, retrieving relevant
-    information from the AI Index Report 2025 using the configured LLM provider.
+    information from the active document using the configured LLM provider.
 
     This function checks if the required inputs are provided, ensures the RAG agent executor is set up,
     and then either generates a response or provides detailed reasoning behind the response. The reasoning
@@ -194,7 +190,7 @@ def process_query(
               response and reasoning steps if enabled.
 
     Example:
-        >>> process_query("What are the key findings in the 2025 AI Index Report?",
+        >>> process_query("What are the key findings in this document?",
         >>>                cohere_api_key="your_cohere_api_key",
         >>>                agent_avatar="avatar_image_path")
     """
@@ -207,13 +203,13 @@ def process_query(
         return
 
     if not st.session_state.vector_store:
-        st.error("⚠️ Please upload the AI Index Report 2025 PDF first.")
+        st.error("⚠️ Please upload and index a document first.")
         return
 
     configuration = dict(
         provider=settings.provider, model=settings.model_name,
         deployment=settings.deployment, api_version=settings.api_version,
-        prompt_version="v1", search_type="mmr",
+        prompt_version="document-v2", search_type="mmr",
         k=number_of_retrieved_documents, fetch_k=number_of_retrieved_documents * 4,
         embedding_model=st.session_state.get("embedding_model"),
     )
@@ -227,6 +223,7 @@ def process_query(
             st.session_state.rag_agent_executer = create_rag_agent_exectutor(
                 cohere_api_key, st.session_state.vector_store,
                 number_of_retrieved_documents,
+                document_id=st.session_state.get("document_id"),
             )
         executor = st.session_state.rag_agent_executer
         if recorder.enabled:

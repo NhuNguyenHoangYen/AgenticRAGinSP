@@ -1,36 +1,15 @@
-"""
-Module for loading PDF documents using LangChain's PyMuPDFLoader.
-"""
+"""Load supported documents through the shared content validator."""
+from pathlib import Path
 
-from langchain_community.document_loaders import PyMuPDFLoader
+from src.document_validation import DocumentValidator
 
 
 class DataLoader:
-    """
-    A utility class for loading PDF documents using PyMuPDFLoader.
-
-    Attributes:
-        - loader (PyMuPDFLoader): The document loader initialized with the given file path.
-    """
-
+    """Read PDF, DOCX, TXT, Markdown or CSV and return LangChain documents."""
     def __init__(self, file_path: str):
-        """
-        Initialize the DataLoader with the path to a PDF file.
-
-        Args:
-            - file_path (str): Path to the PDF document to be loaded.
-        """
-
-        self.loader = PyMuPDFLoader(file_path=file_path)
+        self.file_path = Path(file_path)
 
     def get_docs(self):
-        """
-        Load and return the documents from the specified PDF.
-
-        Returns:
-            - List[Document]: A list of LangChain Document objects extracted from the PDF.
-        """
-
-        docs = self.loader.load()
-
-        return docs
+        return DocumentValidator().parse(
+            self.file_path.read_bytes(), self.file_path.name
+        ).documents

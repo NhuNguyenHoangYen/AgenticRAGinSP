@@ -1,5 +1,4 @@
 import os
-import tempfile
 import hashlib
 from uuid import uuid4
 
@@ -10,8 +9,8 @@ import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 
 # local
-from utils import (
-    load_pdf,
+from src.utils import (
+    load_document,
     create_embeddings,
     split_documents,
     build_vector_store,
@@ -22,6 +21,7 @@ from utils import (
 )
 
 from src.llms.llm_config import LLMConfig
+from src.document_validation import DocumentValidationError, DocumentValidator
 from src.observability import (
     RequestContext, configure_logging, get_logger, request_context,
 )
@@ -32,7 +32,7 @@ log = get_logger(__name__)
 
 # Page configuration
 st.set_page_config(
-    page_title="AI Index Report 2025 - RAG Agent",
+    page_title="Document Chatbot",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -44,9 +44,9 @@ with open("src/style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Main title
-st.title("🤖 AI Index Report 2025 - RAG Agent")
+st.title("🤖 Document Chatbot")
 st.markdown(
-    "Ask questions about the AI Index Report 2025 and get intelligent responses."
+    "Upload a document and ask questions grounded in its contents."
 )
 
 # Initialize session state
@@ -132,29 +132,29 @@ with st.sidebar:
     st.subheader("📄 2. Document Upload")
 
     # File uploader
-    uploaded_file = st.file_uploader("Upload Your PDF", type="pdf")
+    uploaded_file = st.file_uploader(
+        "Upload a document", type=list(DocumentValidator.supported_extensions),
+        help="PDF, DOCX, TXT, Markdown (.md), CSV. Maximum 50 MB. Scanned/image-only files need OCR first.",
+    )
 
-    if uploaded_file and (
-        st.session_state.uploaded_file is None
-        or uploaded_file.name != st.session_state.uploaded_file.name
-    ):
-        document_id = hashlib.sha256(uploaded_file.getvalue()).hexdigest()
+    document_id = hashlib.sha256(uploaded_file.getvalue()).hexdigest() if uploaded_file else None
+    upload_key = (document_id, uploaded_file.name, embeddings_type) if uploaded_file else None
+    if uploaded_file and upload_key != st.session_state.get("upload_key"):
         context = RequestContext.create(
             st.session_state.user_id, st.session_state.chat_id,
             ingestion_id=uuid4().hex, document_id=document_id,
         )
-        with request_context(context), st.spinner("Processing PDF..."):
-            pdf_path = None
+        with request_context(context), st.spinner("Validating and indexing document..."):
             stage = "configuration"
             try:
                 log.info("ingestion.started", embedding_model=embeddings_type)
                 if embeddings_type.startswith("cohere") and not cohere_api_key:
                     raise ValueError("Please enter your Cohere API key to process the document.")
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-                    tmp_file.write(uploaded_file.getvalue())
-                    pdf_path = tmp_file.name
-                stage = "pdf_parsing"
-                docs = load_pdf(pdf_path)
+                stage = "document_validation"
+                parsed = load_document(uploaded_file.getvalue(), uploaded_file.name)
+                docs = parsed.documents
+                for warning in parsed.warnings:
+                    st.warning(warning)
                 stage = "chunking"
                 chunks = split_documents(docs)
                 for position, chunk in enumerate(chunks):
@@ -169,41 +169,38 @@ with st.sidebar:
                     process_chunks_with_rate_limit_cohere(chunks, vector_store)
                 else:
                     add_chunks_to_vector_store_hf_embeddings(chunks, vector_store)
+                # Commit the new active document only after successful indexing.
+                st.session_state.messages = []
+                st.session_state.chat_id = uuid4().hex
+                st.session_state.upload_key = upload_key
+                st.session_state.file_type = parsed.extension
                 st.session_state.docs = docs
                 st.session_state.vector_store = vector_store
                 st.session_state.rag_agent_executer = None
                 st.session_state.uploaded_file = uploaded_file
                 st.session_state.document_id = document_id
                 st.session_state.embedding_model = embeddings_type
-                log.info("ingestion.completed", page_count=len(docs), chunk_count=len(chunks))
-                st.success(f"Indexed {len(docs)} pages as {len(chunks)} chunks.")
+                log.info("ingestion.completed", section_count=len(docs), chunk_count=len(chunks), file_type=parsed.extension)
+                st.success(f"Indexed {parsed.filename} as {len(chunks)} chunks.")
+            except DocumentValidationError as error:
+                log.warning("ingestion.rejected", stage=stage, message=str(error))
+                st.error(str(error))
             except Exception:
                 log.exception("ingestion.failed", stage=stage)
                 st.error("Could not index the document. Check the application logs for details.")
-            finally:
-                if pdf_path:
-                    try:
-                        os.unlink(pdf_path)
-                    except OSError:
-                        log.warning("ingestion.temp_cleanup_failed")
-
-    # Number of rendered pages
-    page_count = min(len(st.session_state.docs), 100)
-    number_of_rendered_page = st.slider(
-        "Number of PDF Rendered Pages",
-        min_value=0,
-        max_value=max(page_count, 1),
-        value=min(30, page_count),
-        disabled=page_count == 0,
-        help="Limits the number of previewed pages from the uploaded "
-        "PDF to improve performance, as rendering more pages takes "
-        "longer. A maximum of `100` pages can be previewed.",
-    )
-    st.session_state.rendered_pages = number_of_rendered_page
+    # Page controls only apply to the active PDF, including blank original pages.
+    st.session_state.rendered_pages = 0
+    if st.session_state.get("file_type") == "pdf" and st.session_state.docs:
+        page_count = min(st.session_state.docs[0].metadata["total_pages"], 100)
+        st.session_state.rendered_pages = st.slider(
+            "PDF preview pages", min_value=0, max_value=page_count,
+            value=min(30, page_count),
+            help="Preview up to 100 original PDF pages. All extractable text is indexed.",
+        )
 
     # Show a status indicator for document loading
     if st.session_state.vector_store is not None:
-        st.sidebar.success("✅ Document loaded and indexed successfully!")
+        st.sidebar.success(f"Active document: {st.session_state.uploaded_file.name}")
     else:
         st.sidebar.warning("⚠️ No document loaded")
 
@@ -225,26 +222,34 @@ if llm_config_error:
 
 elif not st.session_state.vector_store:
     st.warning(
-        "⚠️ Please upload the AI Index Report 2025 PDF in the sidebar to continue."
+        "⚠️ Please upload a supported document in the sidebar to continue."
     )
 
 
 pdf_preview, chat_area = st.columns(2)
 
-# PDF preview container
+# Preview the successfully indexed document, not a rejected replacement.
 with pdf_preview:
-
-    if uploaded_file:
+    active_file = st.session_state.uploaded_file
+    if active_file:
+        st.caption(f"Active document: {active_file.name}")
         with st.container(border=True):
-            binary_data = uploaded_file.getvalue()
-            pdf_viewer(
-                input=binary_data,
-                height=600,
-                pages_to_render=[*range(st.session_state.rendered_pages)],
-                resolution_boost=2,
-                pages_vertical_spacing=1,
-                render_text=True,
-            )
+            if st.session_state.get("file_type") == "pdf":
+                if st.session_state.rendered_pages:
+                    try:
+                        pdf_viewer(
+                            input=active_file.getvalue(), height=600,
+                            pages_to_render=list(range(1, st.session_state.rendered_pages + 1)),
+                            resolution_boost=2, pages_vertical_spacing=1, render_text=True,
+                        )
+                    except Exception:
+                        log.exception("document.preview_failed")
+                        st.warning("The PDF preview could not be rendered; you can still ask questions about its extracted text.")
+            else:
+                preview = "\n\n".join(doc.page_content for doc in st.session_state.docs)
+                st.text_area("Extracted text preview", preview[:20000], height=600, disabled=True)
+                if len(preview) > 20000:
+                    st.caption("Preview limited to 20,000 characters; all extracted text is indexed.")
 
 # Chat container
 if st.session_state.vector_store:
@@ -262,7 +267,7 @@ if st.session_state.vector_store:
                         st.markdown(message.content)
 
         # Chat input
-        query = st.chat_input("Ask a question about the AI Index Report 2025...")
+        query = st.chat_input("Ask a question about your document...")
 
         if query:
             # Display user message
