@@ -1,4 +1,6 @@
 import os
+import sys
+from pathlib import Path
 import hashlib
 from uuid import uuid4
 
@@ -8,7 +10,12 @@ from langchain_core.messages import HumanMessage
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 
-# local
+# Streamlit may put only src/ on sys.path when executing this file directly.
+# Resolve the project package independently of the launch directory.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.utils import (
     load_document,
     create_embeddings,
@@ -40,7 +47,7 @@ st.set_page_config(
 
 
 # Set custom CSS styling
-with open("src/style.css") as f:
+with (PROJECT_ROOT / "src" / "style.css").open(encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Main title
@@ -79,8 +86,8 @@ for identity in ("user_id", "chat_id"):
 
 
 # Load message avatars
-mohammed_avatar = "docs/Mohammed_avatar.png"
-agent_avatar = "docs/agent_avatar.png"
+mohammed_avatar = str(PROJECT_ROOT / "docs" / "Mohammed_avatar.png")
+agent_avatar = str(PROJECT_ROOT / "docs" / "agent_avatar.png")
 
 
 # Sidebar for API key and settings
