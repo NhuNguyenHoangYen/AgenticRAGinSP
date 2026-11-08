@@ -1,0 +1,10 @@
+# Verified on Python 3.11 in an isolated API environment.
+# Do not install over the existing Streamlit environment.
+fastapi==0.162.2
+uvicorn==0.54.0
+pymongo==4.19.0
+pydantic==2.14.3
+python-dotenv==1.2.4
+# Single-document upload and RAG workflows (milestone B).
+python-multipart==0.0.20
+-r requirements-rag.txt

@@ -33,7 +33,7 @@ class ReActRagAgent:
         - agent: LangChain agent created using the ReAct prompt and retriever tool.
     """
 
-    def __init__(self, llm, vector_store, number_of_retrieved_documents: int = 5, document_id: str = None):
+    def __init__(self, llm, vector_store, number_of_retrieved_documents: int = 5, document_id: str = None, search_filter=None):
         """
         Initialize the ReActRagAgent.
 
@@ -73,7 +73,9 @@ class ReActRagAgent:
             "k": number_of_retrieved_documents,
             "fetch_k": number_of_retrieved_documents * 4,
         }
-        if document_id:
+        if search_filter is not None:
+            search_kwargs["filter"] = search_filter
+        elif document_id:
             search_kwargs["filter"] = Filter(must=[FieldCondition(
                 key="metadata.document_id", match=MatchValue(value=document_id)
             )])

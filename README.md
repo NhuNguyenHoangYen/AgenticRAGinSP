@@ -1,5 +1,22 @@
 # AgenticRAG - AI-Powered Agent with Smart Conversation and Retrieval-Augmented Generation
 
+## Current multi-document application
+
+The current entry point uses **Streamlit → FastAPI → ingestion worker / MongoDB / Qdrant**. Upload several PDF, DOCX, TXT, Markdown or CSV documents into a chat, add more later, select documents per question, compare sources, inspect citations and remove attachments. Chat history is stored by the backend and reloads through the API. The backend currently uses a shared development identity; sign-in is not implemented.
+
+Use the setup and three-terminal startup instructions in [multidoc.md](multidoc.md#running-the-application). Install frontend dependencies from `requirements-ui.txt` in a frontend environment and backend dependencies from `requirements-backend.txt` in the API environment. Configure provider keys/models on the backend through `.env`; Streamlit uses `API_BASE_URL=http://127.0.0.1:8000`.
+
+```bash
+# Run from the project root in separate terminals, after dependency/environment setup:
+.venv-api/bin/python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
+.venv-api/bin/python -m src.workers.ingestion
+.venv-ui/bin/python -m streamlit run src/app.py
+```
+
+MongoDB and Qdrant must be running. The API does not start the worker automatically. Milestones A–E are complete; F (DeepEval migration) was omitted as requested. The original project description below describes the earlier single-report application; use `multidoc.md` for the current architecture and run instructions.
+
+---
+
 ## 🚀 Overview
 
 **AgenticRAG** is an advanced **AI-powered retrieval-augmented generation (RAG) Agent** designed to provide users with an interactive and intelligent conversational experience. Built using **LangChain**, it leverages an intelligent agent capable of retrieving relevant chunks from a custom `AI index Report 2025` based on the user's query. The agent is equipped with **memory** to handle ongoing conversations and can determine whether to perform a RAG process based on the query’s nature.

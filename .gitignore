@@ -21,3 +21,7 @@ logs/
 .venv-eval/
 evaluation_results/
 .deepeval/
+
+# Separate FastAPI environment and local upload storage
+.venv-api/
+var/uploads/

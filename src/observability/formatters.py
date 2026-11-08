@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 def sanitize(value):
     if isinstance(value, dict):
-        return {str(k): "[REDACTED]" if re.search(r"api.?key|secret|password|authorization|access_token", str(k), re.I)
+        return {str(k): "[REDACTED]" if re.search(r"api.?key|secret|password|authorization|access_token|mongodb_uri|connection_string", str(k), re.I)
                 else sanitize(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [sanitize(item) for item in value]
@@ -16,6 +16,7 @@ def sanitize(value):
         for key, secret in os.environ.items():
             if re.search(r"API_KEY|SECRET|PASSWORD|TOKEN", key) and len(secret) >= 6:
                 value = value.replace(secret, "[REDACTED]")
+        value = re.sub(r"(mongodb(?:\+srv)?://)[^/\s]*@", r"\1[REDACTED]@", value, flags=re.I)
         value = re.sub(r"Bearer\s+\S+", "Bearer [REDACTED]", value, flags=re.I)
         value = re.sub(r"\bsk-[A-Za-z0-9_-]+", "[REDACTED]", value)
         return value

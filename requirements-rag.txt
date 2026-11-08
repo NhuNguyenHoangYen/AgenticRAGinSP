@@ -1,0 +1,17 @@
+# Existing app's RAG stack, shared by the backend. Streamlit is not required here.
+langchain==0.3.24
+langchain-core==0.3.56
+langchain-community==0.3.23
+langchain-text-splitters==0.3.8
+langchain-openai==0.3.15
+langchain-cohere==0.4.4
+langchain-huggingface==0.1.2
+langchain-qdrant==0.2.1
+qdrant-client==1.14.2
+PyMuPDF==1.25.5
+sentence-transformers==4.1.0
+cohere==5.15.0
+openai==1.76.2
+# Keep the local embedding runtime aligned with the verified app environment.
+torch==2.7.0
+transformers==4.51.3

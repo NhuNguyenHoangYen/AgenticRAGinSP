@@ -8,7 +8,6 @@ to maintain context and reduce the number of splits.
 from typing import List
 
 from langchain_core.documents import Document
-from langchain_experimental.text_splitter import SemanticChunker
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 

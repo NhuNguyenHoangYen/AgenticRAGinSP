@@ -14,11 +14,10 @@ from langchain_core.agents import AgentStep
 
 # local
 from pathlib import Path
-from src.document_validation import DocumentValidator
+from src.services.document_processing import DocumentProcessor
 from src.embeddings.embeddings_factory import EmbeddingsFactory
 from src.llms.llm_factory import LLMFactory
 from src.llms.llm_config import LLMConfig
-from src.chunking import TextSplitter
 from src.indexing import Index
 from src.rag_agent import ReActRagAgent
 from src.observability import EvaluationRecorder, get_logger
@@ -53,12 +52,7 @@ def response_generator(text: str):
 
 def load_document(content: bytes, filename: str):
     """Validate and parse one upload before embedding; returns ParsedDocument."""
-    with log.operation("document.parsing"):
-        parsed = DocumentValidator().parse(content, filename)
-    log.info("document.parsed", section_count=len(parsed.documents), file_type=parsed.extension)
-    for warning in parsed.warnings:
-        log.warning("document.extraction_warning", message=warning)
-    return parsed
+    return DocumentProcessor().parse(content, filename)
 
 
 def load_pdf(pdf_file_path: str):
@@ -110,11 +104,7 @@ def split_documents(docs):
         - list: A list of smaller document chunks after splitting the original documents.
     """
 
-    text_splitter = TextSplitter()
-    with log.operation("document.chunking", chunk_size=8000, chunk_overlap=800):
-        chunks = text_splitter.split_documents(docs)
-    log.info("document.chunked", chunk_count=len(chunks))
-    return chunks
+    return DocumentProcessor().split(docs)
 
 
 def build_vector_store(embeddings, url=None, collection_name=None):

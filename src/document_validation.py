@@ -28,15 +28,21 @@ class DocumentValidator:
     max_bytes = 50 * 1024 * 1024
     max_expanded_bytes = 100 * 1024 * 1024
 
-    def parse(self, content: bytes, filename: str) -> ParsedDocument:
+    def validate_upload(self, content: bytes, filename: str):
         filename = Path(filename).name
         extension = Path(filename).suffix.lower().lstrip(".")
+        if len(filename) > 255:
+            raise DocumentValidationError("Filename must be no longer than 255 characters")
         if extension not in self.supported_extensions:
             raise DocumentValidationError("Unsupported format. Upload PDF, DOCX, TXT, Markdown (.md), or CSV.")
         if not content:
             raise DocumentValidationError("The file is empty. Choose a document containing readable text.")
         if len(content) > self.max_bytes:
             raise DocumentValidationError("The file exceeds the 50 MB upload limit.")
+        return filename, extension
+
+    def parse(self, content: bytes, filename: str) -> ParsedDocument:
+        filename, extension = self.validate_upload(content, filename)
         try:
             parser = getattr(self, f"_parse_{extension}", self._parse_text)
             documents, warnings = parser(content, filename)

@@ -36,13 +36,15 @@ class AgentLoggingCallback(BaseCallbackHandler):
 
     def on_retriever_end(self, documents, *, run_id, **kwargs):
         state, elapsed = self._end(run_id)
-        passages = [doc.page_content for doc in documents]
+        passages = [doc.metadata.get("rendered_evidence",doc.page_content) for doc in documents]
         ids = [doc.metadata.get("chunk_id", doc.metadata.get("_id")) for doc in documents]
         self.recorder.retrieval(dict(
             retrieval_call_id=str(run_id), query=state.get("query"), passages=passages,
             chunk_ids=ids,
             sources=[dict(document_id=doc.metadata.get("document_id"),
-                          page=doc.metadata.get("page")) for doc in documents],
+                          page=doc.metadata.get("page"), section=doc.metadata.get("section"),
+                          index_version=doc.metadata.get("index_version"),filename=doc.metadata.get("filename"),
+                          source_label=doc.metadata.get("source_label"),truncated=doc.metadata.get("truncated",False)) for doc in documents],
         ))
         self._log("retrieval.completed", retrieval_call_id=str(run_id),
                   returned_count=len(documents), chunk_ids=ids, duration_ms=elapsed)
