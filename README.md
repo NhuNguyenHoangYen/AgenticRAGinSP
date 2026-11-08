@@ -232,7 +232,7 @@ curl --fail http://localhost:6333/
 | Invalid PDF or no extractable text | Upload a valid text-based document; perform OCR separately for scanned PDFs. Permanent content failures require corrected input. |
 | Upload or question timed out | Refresh documents/conversation first. The server may have saved the operation; the UI does not automatically replay uncertain mutations. |
 | Missing provider key or deployment error | Check the selected provider's `.env` values and the API logs; restart API/worker after changes. |
-| Citation validation error | Inspect the request ID and logs. Rejected citation output is not served as a successful answer. |
+| Citation validation error | Inspect the request ID and logs. OpenAI/Azure use JSON mode, and malformed answer formats receive one bounded repair attempt using the same evidence. Repaired output must still pass citation checks; invalid citations are not served as a successful answer. Restart FastAPI after pulling this fix. |
 | Port already in use | Reuse or stop the existing service. If changing the API port, update `API_BASE_URL` and restart the UI. |
 
 ## Logging and stored data

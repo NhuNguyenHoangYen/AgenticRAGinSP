@@ -64,8 +64,13 @@ class AgentLoggingCallback(BaseCallbackHandler):
         if not usage and response.generations:
             message = getattr(response.generations[0][0], "message", None)
             usage = getattr(message, "usage_metadata", None)
+        finish_reason = None
+        if response.generations and response.generations[0]:
+            generation = response.generations[0][0]
+            metadata = getattr(getattr(generation, "message", None), "response_metadata", {}) or {}
+            finish_reason = (generation.generation_info or {}).get("finish_reason") or metadata.get("finish_reason")
         self._log("llm.completed", llm_call_id=str(run_id), duration_ms=elapsed,
-                  usage=usage, **self.configuration)
+                  usage=usage, finish_reason=finish_reason, **self.configuration)
 
     def on_tool_start(self, serialized, input_str, *, run_id, **kwargs):
         self._begin("tool", run_id, name=(serialized or {}).get("name"), input=input_str)

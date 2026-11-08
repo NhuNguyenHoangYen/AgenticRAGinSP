@@ -15,25 +15,26 @@ def render_conversation(client, chat_id, documents):
     except APIClientError as error:
         show_error(error)
         return
-    for message in messages:
-        with st.chat_message(message['role']):
-            if message['content']:
-                st.markdown(message['content'])
-            if message['status'] != 'completed':
-                st.warning(f"Answer status: {message['status']}. Refresh before resubmitting a question.")
-            for warning in message.get('answer_warnings', []):
-                st.warning(warning)
-            if message.get('answerability') in ('partial', 'unanswerable'):
-                st.caption(f"Answer coverage: {message['answerability']}")
-            for index, citation in enumerate(message.get('citations', [])):
-                location = f"page {citation['page']}" if citation.get('page') else citation.get('section') or 'Document text'
-                with st.expander(f"[{citation['label']}] {citation['filename']} · {location}"):
-                    st.caption(f"Document: {citation['document_id']} · index: {citation['index_version']}")
-                    if not citation.get('attached', True):
-                        st.caption('This document has been removed from the current chat.')
-                    st.text(citation['quote'])
-                    render_preview(client, citation['document_id'], citation['filename'],
-                                   f"citation_{message['id']}_{index}", citation.get('page'))
+    with st.container(height=560, border=True):
+        for message in messages:
+            with st.chat_message(message['role']):
+                if message['content']:
+                    st.markdown(message['content'])
+                if message['status'] != 'completed':
+                    st.warning(f"Answer status: {message['status']}. Refresh before resubmitting a question.")
+                for warning in message.get('answer_warnings', []):
+                    st.warning(warning)
+                if message.get('answerability') in ('partial', 'unanswerable'):
+                    st.caption(f"Answer coverage: {message['answerability']}")
+                for index, citation in enumerate(message.get('citations', [])):
+                    location = f"page {citation['page']}" if citation.get('page') else citation.get('section') or 'Document text'
+                    with st.expander(f"[{citation['label']}] {citation['filename']} · {location}"):
+                        st.caption(f"Document: {citation['document_id']} · index: {citation['index_version']}")
+                        if not citation.get('attached', True):
+                            st.caption('This document has been removed from the current chat.')
+                        st.text(citation['quote'])
+                        render_preview(client, citation['document_id'], citation['filename'],
+                                       f"citation_{message['id']}_{index}", citation.get('page'))
     ready = {doc['document_id']: doc for doc in documents if doc['status'] == 'ready'}
     mode = st.radio('Use documents', ['All ready documents', 'Select documents'], key=f'scope_{chat_id}', horizontal=True)
     ids = []

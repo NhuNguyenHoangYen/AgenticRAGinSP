@@ -8,7 +8,7 @@ from src.services.contracts import PipelineAnswer, RetrievedEvidence
 from src.models.records import GenerationMetadata
 
 log = get_logger(__name__)
-PROMPT_VERSION = "document-v3-scoped-citations"
+PROMPT_VERSION = "document-v4-json-citations"
 PARSER_VERSION = "document-validator-v1"
 CHUNKER_VERSION = "recursive-8000-800-v1"
 
@@ -94,6 +94,7 @@ class RAGPipeline:
         from src.services.retrieval import RetrievalSession,ScopedRetriever
         from src.services.scoped_agent import ScopedQAAgent
         from src.services.citations import CitationValidator
+        from src.services.errors import WorkflowError
         from src.services.contracts import DocumentCoverage
 
         config=LLMConfig.from_env()
@@ -109,7 +110,8 @@ class RAGPipeline:
             retriever=ScopedRetriever(session=session)
             messages=[(HumanMessage if message.role=='user' else AIMessage)(content=message.content) for message in history]
             wrapper=LLMFactory.create_llm(config=config)
-            agent=ScopedQAAgent(wrapper.get_llm(),retriever,scope,messages,callback)
+            agent=ScopedQAAgent(wrapper.get_llm(),retriever,scope,messages,callback,
+                                json_mode=config.provider in ('openai','azure_openai'))
             try:
                 with log.operation('qa.agent_execution',**configuration):
                     raw=agent.invoke(question)
@@ -119,7 +121,18 @@ class RAGPipeline:
                     for call in capture.retrieval_calls:evaluation_recorder.retrieval(call)
                     for call in capture.tools_called:evaluation_recorder.tool(call)
             evidence=list(session.evidence.values())
-            answer,citations=CitationValidator().validate(raw,evidence,scope)
+            validator=CitationValidator()
+            try:
+                answer,citations=validator.validate(raw,evidence,scope)
+            except WorkflowError as error:
+                if error.code != 'invalid_answer_format':
+                    raise
+                log.warning('qa.answer_format_repair_started', repair_attempt=1, **configuration)
+                with log.operation('qa.answer_format_repair', repair_attempt=1):
+                    repaired=agent.repair_format(question,raw,evidence)
+                    # Same strict source, quote and comparison validation as the first answer.
+                    answer,citations=validator.validate(repaired,evidence,scope)
+                log.info('qa.answer_format_repaired', repair_attempt=1)
             retrieved={item.document_id for item in evidence}
             cited={item.document_id for item in citations}
             warnings=[]

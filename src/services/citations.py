@@ -25,13 +25,21 @@ class CitedAnswer(ValueModel):
 
 class CitationValidator:
     def validate(self,raw,evidence,scope):
+        if not isinstance(raw, str):
+            log.warning('qa.answer_format_invalid', reason='non_text_output')
+            raise WorkflowError('invalid_answer_format','Model output did not match the cited-answer contract')
         text=raw.strip()
         if text.startswith('```') and text.endswith('```'):
             lines=text.splitlines()
             if lines[0].strip() in ('```','```json'):text='\n'.join(lines[1:-1])
         try:
             answer=CitedAnswer.model_validate_json(text)
-        except (ValidationError,ValueError):
+        except ValidationError as error:
+            # Error types identify JSON/schema failures without logging model text.
+            log.warning('qa.answer_format_invalid',
+                        validation_types=sorted({item['type'] for item in error.errors(include_input=False)}))
+            raise WorkflowError('invalid_answer_format','Model output did not match the cited-answer contract') from None
+        except ValueError:
             raise WorkflowError('invalid_answer_format','Model output did not match the cited-answer contract') from None
         registry={item.label:item for item in evidence}
         mentioned=set(re.findall(r'\[(S[0-9]+)\]',answer.answer))
