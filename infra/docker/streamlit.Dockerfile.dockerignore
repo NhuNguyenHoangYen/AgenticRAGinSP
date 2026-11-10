@@ -1,0 +1,12 @@
+# Build context for streamlit.Dockerfile (allowlist, see backend.Dockerfile.dockerignore).
+
+*
+!requirements-ui.txt
+!src/__init__.py
+!src/app.py
+!src/style.css
+!src/ui
+!src/observability
+
+**/__pycache__
+**/*.py[cod]

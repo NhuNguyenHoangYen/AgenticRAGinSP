@@ -1,0 +1,13 @@
+# Build context for backend.Dockerfile.
+# Allowlist: ignore everything, then re-include only what the image copies.
+# This keeps .env, uploads, logs, virtual environments and .git out of the
+# context, so secrets cannot end up in an image layer by accident.
+
+*
+!requirements-backend.txt
+!requirements-rag.txt
+!src
+
+# Local artifacts that may exist inside src/
+**/__pycache__
+**/*.py[cod]
