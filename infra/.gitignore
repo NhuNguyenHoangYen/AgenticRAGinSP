@@ -1,3 +1,7 @@
 # Real environment files hold provider credentials; only examples are tracked.
 env/*.env
 !env/*.env.example
+
+# Basic Auth users for the reverse proxy (create-htpasswd.sh).
+proxy/htpasswd
+proxy/htpasswd.*

@@ -12,16 +12,18 @@ Next.js). Parts are added in small branches, one concern each.
 | --- | --- |
 | `docker/backend.Dockerfile` | Ready: FastAPI API and ingestion worker |
 | `docker/streamlit.Dockerfile` | Placeholder UI until the frontend stack is settled |
-| `compose/compose.yaml` | Ready: data stores, API, worker and UI on one host |
+| `compose/compose.yaml` | Ready: data stores, API, worker, UI and proxy on one host |
+| `proxy/nginx.conf` | Ready: single entry point with Basic Auth |
 | Next.js image | Not started; added once `frontend/` is complete |
-| Reverse proxy, ops scripts, CI/CD | Planned in follow-up branches |
+| Ops scripts, CI/CD | Planned in follow-up branches |
 
 ## Layout
 
 ```
 infra/
 ├── README.md
-├── .gitignore                 # keeps real env files out of Git
+├── .gitattributes             # LF line endings for everything here
+├── .gitignore                 # keeps env files and htpasswd out of Git
 ├── compose/
 │   └── compose.yaml           # the whole stack
 ├── docker/
@@ -29,27 +31,37 @@ infra/
 │   ├── backend.Dockerfile.dockerignore
 │   ├── streamlit.Dockerfile
 │   └── streamlit.Dockerfile.dockerignore
-└── env/
-    └── stack.env.example      # copy to stack.env and fill in secrets
+├── env/
+│   └── stack.env.example      # copy to stack.env and fill in secrets
+├── proxy/
+│   └── nginx.conf             # htpasswd is created next to it, untracked
+└── scripts/
+    └── create-htpasswd.sh
 ```
 
 ## Architecture
 
 ```
-            host 127.0.0.1:8501
-                    │
- ┌──────────────────┼──────────────── network: agentic-rag_default ──┐
- │                  ▼                                                │
- │   ui (Streamlit) ──HTTP──▶ api (FastAPI :8000) ──┬──▶ mongodb     │
- │                                                  └──▶ qdrant      │
- │   worker (ingestion) ────────────────────────────┬──▶ mongodb     │
- │                                                  └──▶ qdrant      │
- └───────────────────────────────────────────────────────────────────┘
+         PROXY_BIND:PROXY_PORT  (default 127.0.0.1:8080)
+                    │  Basic Auth
+ ┌──────────────────┼──────────────────── network: agentic-rag_default ──┐
+ │                  ▼                                                    │
+ │   proxy (nginx) ──/──────────▶ ui (Streamlit :8501)                   │
+ │                 ──/api/, /health/──▶ api (FastAPI :8000) ──┬──▶ mongodb│
+ │                                                            └──▶ qdrant │
+ │   ui ──HTTP──▶ api                                                     │
+ │   worker (ingestion) ──────────────────────────────────────┬──▶ mongodb│
+ │                                                            └──▶ qdrant │
+ └────────────────────────────────────────────────────────────────────────┘
    volumes: mongo_data  qdrant_data  uploads (api + worker)  hf_cache  api_logs  worker_logs
 ```
 
-- Only the UI is published, on the host loopback interface. Docker-published ports bypass
-  `ufw`, so data stores are never published.
+- The proxy is the only published service. Docker-published ports bypass `ufw`, so nothing
+  else is published, and the proxy binds to loopback unless `PROXY_BIND` says otherwise.
+- The application has no sign-in yet (one shared development identity), so the proxy requires
+  HTTP Basic Auth on every route except its own `/healthz`.
+- `/api/` is routed already so the browser-based Next.js frontend can call the API from the
+  same origin, without CORS.
 - The API and the worker run the same backend image and share the `uploads` volume: the API
   stores originals, the worker reads them. They also share `hf_cache`, so the embedding model
   is downloaded once.
@@ -62,10 +74,11 @@ infra/
 | --- | --- | --- |
 | backend | `uvicorn src.api.main:app` by default; the worker overrides the command with `python -m src.workers.ingestion` | 8000 |
 | streamlit | `streamlit run src/app.py` | 8501 |
+| proxy | `nginxinc/nginx-unprivileged` with `proxy/nginx.conf` | 8080 |
 
-Both images run as an unprivileged `app` user. Each Dockerfile has its own allowlist ignore
-file next to it (`<name>.Dockerfile.dockerignore`), so builds use the repository root as
-context but each image only sees the files it copies.
+All images run as unprivileged users. Each Dockerfile has its own allowlist ignore file next
+to it (`<name>.Dockerfile.dockerignore`), so builds use the repository root as context but each
+image only sees the files it copies.
 
 The backend installs PyTorch from the CPU-only index. Override the `TORCH_INDEX_URL` and
 `TORCH_VERSION` build arguments only for a GPU host, keeping the version aligned with
@@ -76,9 +89,14 @@ The backend installs PyTorch from the CPU-only index. Override the `TORCH_INDEX_
 From the repository root:
 
 ```sh
+# 1. Configuration and secrets
 cp infra/env/stack.env.example infra/env/stack.env
 chmod 600 infra/env/stack.env          # then set OPENAI_API_KEY (or another provider)
 
+# 2. At least one Basic Auth user for the proxy
+infra/scripts/create-htpasswd.sh mentor
+
+# 3. Build and start
 docker compose -f infra/compose/compose.yaml --env-file infra/env/stack.env up -d --build
 docker compose -f infra/compose/compose.yaml --env-file infra/env/stack.env ps
 ```
@@ -93,15 +111,50 @@ the embedding model into `hf_cache`. Follow progress with:
 docker compose -f infra/compose/compose.yaml logs -f worker
 ```
 
-Open the UI through an SSH tunnel from your machine:
+### Access
+
+With the default `PROXY_BIND=127.0.0.1`, open an SSH tunnel from your machine:
 
 ```sh
-ssh -L 8501:127.0.0.1:8501 <user>@<server>
-# then browse to http://localhost:8501
+ssh -L 8080:127.0.0.1:8080 <user>@<server>
+# then browse to http://localhost:8080
 ```
 
-Stop without losing data with `docker compose ... stop` or `down`. `down -v` deletes the
-volumes, including every chat, document and vector.
+To serve the LAN directly, set `PROXY_BIND=0.0.0.0` and recreate the proxy
+(`docker compose ... up -d proxy`). Traffic is plain HTTP, so Basic Auth credentials cross the
+network unencrypted: use this only on a trusted network, or put TLS in front.
+
+After adding or changing users, reload the proxy:
+
+```sh
+docker compose -f infra/compose/compose.yaml exec proxy nginx -s reload
+```
+
+### Behind an existing host nginx
+
+If the host already runs nginx on port 80 (as on the current server), keep `PROXY_BIND` on
+loopback and add a host site that forwards to it. This needs root on the host:
+
+```nginx
+server {
+    listen 80;
+    server_name agentic-rag.example.internal;
+    client_max_body_size 110m;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 1h;
+    }
+}
+```
+
+### Stop
+
+`docker compose ... stop` or `down` keeps the data. `down -v` deletes the volumes, including
+every chat, document and vector.
 
 ## Deployment constraints
 

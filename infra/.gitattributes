@@ -1,0 +1,3 @@
+# Everything under infra/ runs on Linux. Force LF so a Windows checkout with
+# core.autocrlf cannot turn scripts into "bash\r: No such file" errors.
+* text=auto eol=lf

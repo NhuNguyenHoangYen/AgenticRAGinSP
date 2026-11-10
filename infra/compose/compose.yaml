@@ -4,9 +4,9 @@
 #   cp infra/env/stack.env.example infra/env/stack.env   # then fill in secrets
 #   docker compose -f infra/compose/compose.yaml up -d --build
 #
-# Only the UI is published, and only on the host loopback interface. MongoDB,
-# Qdrant and the API are reachable from other containers on the stack network,
-# never from outside the host.
+# Only the reverse proxy is published (loopback by default, see PROXY_BIND).
+# The UI, the API, MongoDB and Qdrant are reachable from other containers on
+# the stack network, never directly from outside the host.
 
 name: agentic-rag
 
@@ -168,10 +168,6 @@ services:
     environment:
       API_BASE_URL: http://api:8000
       LOG_DIR: logs
-    ports:
-      # Loopback only. From another machine use an SSH tunnel:
-      #   ssh -L 8501:127.0.0.1:8501 <user>@<server>
-      - "127.0.0.1:${UI_PORT:-8501}:8501"
     depends_on:
       api:
         condition: service_healthy
@@ -186,6 +182,43 @@ services:
       resources:
         limits:
           memory: ${UI_MEMORY_LIMIT:-512m}
+    restart: unless-stopped
+    logging: *default-logging
+
+  # -------------------------------------------------------------------------
+  # Edge: the only published service
+  # -------------------------------------------------------------------------
+  proxy:
+    image: nginxinc/nginx-unprivileged:1.27.5-alpine3.21
+    volumes:
+      - ../proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Created by infra/scripts/create-htpasswd.sh. create_host_path: false
+      # makes a missing file a clear start-up error; otherwise Docker would
+      # create an empty directory in its place and nginx would fail obscurely.
+      - type: bind
+        source: ../proxy/htpasswd
+        target: /etc/nginx/auth/htpasswd
+        read_only: true
+        bind:
+          create_host_path: false
+    ports:
+      # PROXY_BIND=127.0.0.1 (default): reachable only through an SSH tunnel.
+      # PROXY_BIND=0.0.0.0: reachable from the LAN; Basic Auth still applies.
+      - "${PROXY_BIND:-127.0.0.1}:${PROXY_PORT:-8080}:8080"
+    depends_on:
+      ui:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: ${PROXY_MEMORY_LIMIT:-128m}
     restart: unless-stopped
     logging: *default-logging
 
