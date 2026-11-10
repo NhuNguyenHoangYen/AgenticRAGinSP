@@ -1,0 +1,202 @@
+# AgenticRAG application stack.
+#
+# Usage, from the repository root:
+#   cp infra/env/stack.env.example infra/env/stack.env   # then fill in secrets
+#   docker compose -f infra/compose/compose.yaml up -d --build
+#
+# Only the UI is published, and only on the host loopback interface. MongoDB,
+# Qdrant and the API are reachable from other containers on the stack network,
+# never from outside the host.
+
+name: agentic-rag
+
+# ---------------------------------------------------------------------------
+# Shared fragments
+# ---------------------------------------------------------------------------
+
+# Rotate container stdout so logs cannot fill the disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# Settings the API and the worker must agree on: same database, same vector
+# store, same upload directory and same embedding profile. A mismatch leaves
+# uploads queued forever or indexes them into a collection the API never reads.
+x-backend-environment: &backend-environment
+  APP_ENV: development  # the API refuses other values until authentication exists
+  MONGODB_URI: mongodb://mongodb:27017
+  MONGODB_DATABASE: ${MONGODB_DATABASE:-agentic_rag}
+  QDRANT_URL: http://qdrant:6333
+  UPLOAD_DIR: var/uploads
+  LOG_DIR: logs
+  API_EMBEDDING_PROVIDER: ${API_EMBEDDING_PROVIDER:-huggingface}
+  API_EMBEDDING_MODEL: ${API_EMBEDDING_MODEL:-sentence-transformers/all-mpnet-base-v2}
+  API_QDRANT_COLLECTION_PREFIX: ${API_QDRANT_COLLECTION_PREFIX:-agentic-rag-api}
+
+x-backend: &backend
+  image: agentic-rag-backend:${IMAGE_TAG:-local}
+  build:
+    context: ../..
+    dockerfile: infra/docker/backend.Dockerfile
+  # Provider credentials (OPENAI_API_KEY, COHERE_API_KEY, ...) live only here.
+  env_file:
+    - path: ../env/stack.env
+      required: true
+  init: true
+  restart: unless-stopped
+  logging: *default-logging
+
+services:
+  # -------------------------------------------------------------------------
+  # Data stores
+  # -------------------------------------------------------------------------
+  mongodb:
+    # MongoDB 5.0+ requires AVX, which the target VM does not expose.
+    # 4.4.30 is the newest release that runs there (end of life: keep it
+    # unpublished and internal to the stack).
+    image: mongo:4.4.30
+    command: ["--wiredTigerCacheSizeGB", "${MONGODB_CACHE_GB:-0.25}"]
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--quiet", "--eval", "quit(db.adminCommand('ping').ok ? 0 : 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: ${MONGODB_MEMORY_LIMIT:-1g}
+    restart: unless-stopped
+    logging: *default-logging
+
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    environment:
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      # The image ships bash but no curl or wget: probe /readyz over /dev/tcp.
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/6333
+          && printf 'GET /readyz HTTP/1.0\r\n\r\n' >&3
+          && head -n 1 <&3 | grep -q ' 200 '
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: ${QDRANT_MEMORY_LIMIT:-1g}
+    restart: unless-stopped
+    logging: *default-logging
+
+  # -------------------------------------------------------------------------
+  # Backend: the API and the worker run the same image
+  # -------------------------------------------------------------------------
+  api:
+    <<: *backend
+    environment:
+      <<: *backend-environment
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:3000}
+    volumes:
+      - uploads:/app/var/uploads
+      - hf_cache:/home/app/.cache/huggingface
+      - api_logs:/app/logs
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      # /health/ready also checks MongoDB connectivity.
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health/ready', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "${API_CPUS:-2}"
+          memory: ${API_MEMORY_LIMIT:-3g}
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "src.workers.ingestion"]
+    environment:
+      <<: *backend-environment
+    volumes:
+      # Shares uploads with the API: the API stores originals, the worker reads them.
+      - uploads:/app/var/uploads
+      - hf_cache:/home/app/.cache/huggingface
+      # Separate from the API: log files are named by PID, and both processes
+      # get the same PID in their containers (7 under init), so a shared
+      # directory would make them write and rotate the same app.<pid>.jsonl.
+      - worker_logs:/app/logs
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    # No HTTP endpoint to probe. A crash exits the process and the restart
+    # policy brings it back; an expired job lease lets the next run resume.
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "${WORKER_CPUS:-2}"
+          memory: ${WORKER_MEMORY_LIMIT:-3g}
+
+  # -------------------------------------------------------------------------
+  # UI: Streamlit placeholder until the Next.js frontend is complete
+  # -------------------------------------------------------------------------
+  ui:
+    image: agentic-rag-streamlit:${IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/streamlit.Dockerfile
+    environment:
+      API_BASE_URL: http://api:8000
+      LOG_DIR: logs
+    ports:
+      # Loopback only. From another machine use an SSH tunnel:
+      #   ssh -L 8501:127.0.0.1:8501 <user>@<server>
+      - "127.0.0.1:${UI_PORT:-8501}:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+    init: true
+    deploy:
+      resources:
+        limits:
+          memory: ${UI_MEMORY_LIMIT:-512m}
+    restart: unless-stopped
+    logging: *default-logging
+
+# ---------------------------------------------------------------------------
+# Persistent state. Named volumes take the image's ownership of the mount
+# path on first use, so the non-root app user can write to them.
+# ---------------------------------------------------------------------------
+volumes:
+  mongo_data:
+  qdrant_data:
+  uploads:
+  hf_cache:
+  api_logs:
+  worker_logs:

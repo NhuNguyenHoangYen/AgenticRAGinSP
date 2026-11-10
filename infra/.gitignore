@@ -1,0 +1,3 @@
+# Real environment files hold provider credentials; only examples are tracked.
+env/*.env
+!env/*.env.example
