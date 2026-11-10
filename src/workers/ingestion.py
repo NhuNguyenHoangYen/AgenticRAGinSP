@@ -42,9 +42,13 @@ class IngestionWorker:
                    'index.chunker_version':self.profile['chunker_version']}
         cursor = await self.repositories.documents.collection.aggregate([
             {'$match':pending},
-            {'$lookup':{'from':'chats','localField':'_id','foreignField':'document_ids',
-                        'let':{'owner':'$owner_id'},
-                        'pipeline':[{'$match':{'$expr':{'$eq':['$owner_id','$$owner']}}},{'$limit':1}],
+            # let + pipeline form (MongoDB 3.6+). Combining localField/foreignField with a
+            # pipeline needs MongoDB 5.0+, which requires AVX; the deployment VM has no AVX.
+            {'$lookup':{'from':'chats',
+                        'let':{'doc_id':'$_id','owner':'$owner_id'},
+                        'pipeline':[{'$match':{'$expr':{'$and':[
+                            {'$in':['$$doc_id',{'$ifNull':['$document_ids',[]]}]},
+                            {'$eq':['$owner_id','$$owner']}]}}},{'$limit':1}],
                         'as':'attached_chats'}},
             {'$match':{'attached_chats.0':{'$exists':True}}},
             {'$sort':{'updated_at':1}}, {'$limit':100}, {'$project':{'attached_chats':0}},
