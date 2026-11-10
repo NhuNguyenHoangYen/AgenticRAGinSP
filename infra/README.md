@@ -14,8 +14,9 @@ Next.js). Parts are added in small branches, one concern each.
 | `docker/streamlit.Dockerfile` | Placeholder UI until the frontend stack is settled |
 | `compose/compose.yaml` | Ready: data stores, API, worker, UI and proxy on one host |
 | `proxy/nginx.conf` | Ready: single entry point with Basic Auth |
+| `scripts/` | Ready: deploy with rollback, smoke test, backup, restore |
 | Next.js image | Not started; added once `frontend/` is complete |
-| Ops scripts, CI/CD | Planned in follow-up branches |
+| CI/CD | Planned in follow-up branches |
 
 ## Layout
 
@@ -36,7 +37,12 @@ infra/
 ├── proxy/
 │   └── nginx.conf             # htpasswd is created next to it, untracked
 └── scripts/
-    └── create-htpasswd.sh
+    ├── lib.sh                 # shared helpers, sourced by the others
+    ├── create-htpasswd.sh
+    ├── deploy.sh
+    ├── smoke-test.sh
+    ├── backup.sh
+    └── restore.sh
 ```
 
 ## Architecture
@@ -155,6 +161,58 @@ server {
 
 `docker compose ... stop` or `down` keeps the data. `down -v` deletes the volumes, including
 every chat, document and vector.
+
+## Operations
+
+The scripts wrap the Compose commands above. They act on the project `agentic-rag` and the env
+file `infra/env/stack.env`; set `STACK_PROJECT` or `STACK_ENV_FILE` to target another stack,
+for example a throwaway test copy.
+
+| Task | Command |
+| --- | --- |
+| Deploy the checked-out code | `infra/scripts/deploy.sh` |
+| List builds available for rollback | `infra/scripts/deploy.sh --list` |
+| Roll back to an earlier build | `infra/scripts/deploy.sh --rollback <commit>` |
+| Quick health check | `infra/scripts/smoke-test.sh` |
+| Health check including ingestion | `infra/scripts/smoke-test.sh --ingest` |
+| Back up | `infra/scripts/backup.sh` |
+| Restore | `infra/scripts/restore.sh <backup-dir> --yes` |
+
+### Deploy and roll back
+
+`deploy.sh` builds the images, tags them with the current Git commit, starts the stack, waits
+until every service is healthy and runs the smoke test. Because each deploy keeps its
+commit-tagged images, `--rollback <commit>` restarts an earlier build without rebuilding.
+Rollback covers code only: data written by a newer build stays as it is.
+
+A typical update on the server:
+
+```sh
+git pull
+infra/scripts/deploy.sh
+```
+
+Old commit-tagged images accumulate; remove ones you no longer need with
+`docker image rm agentic-rag-backend:<commit> agentic-rag-streamlit:<commit>`.
+
+### Back up and restore
+
+`backup.sh` writes MongoDB, one snapshot per Qdrant collection and the uploads volume to
+`~/backups/agentic-rag/<UTC timestamp>/`, with a manifest and SHA-256 checksums, and keeps
+the newest `BACKUP_KEEP` (default 7). An interrupted run leaves only a `.partial` directory,
+which is removed.
+
+`restore.sh` verifies the checksums, stops the application services, replaces MongoDB data,
+the backed-up Qdrant collections and the uploads, then starts the stack and smoke tests it.
+
+Schedule nightly backups with cron (`crontab -e` as the deploying user):
+
+```cron
+30 2 * * * cd /path/to/AgenticRAGinSP && infra/scripts/backup.sh >> ~/backups/agentic-rag.log 2>&1
+```
+
+Backups on the same disk do not survive a lost VM. Copy them elsewhere (for example with
+`rsync` to another machine), and test a restore before relying on them.
 
 ## Deployment constraints
 
