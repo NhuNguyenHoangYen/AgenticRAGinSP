@@ -27,3 +27,6 @@ evaluation_results/
 .venv-ui/
 
 var/uploads/
+.pnpm-store/v11
+# Local pnpm package store
+.pnpm-store/

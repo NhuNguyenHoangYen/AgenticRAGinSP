@@ -1,0 +1,33 @@
+* { box-sizing: border-box; }
+body { margin: 0; color: #183047; background: #f3f6f8; font: 16px/1.5 system-ui, sans-serif; }
+a { color: #086667; }
+.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
+.sidebar { background: #132c40; color: white; padding: 22px; }
+.sidebar a { color: #fff; }
+.brand { font-size: 1.35rem; font-weight: 700; text-decoration: none; }
+.sidebar .muted { color: #bdccd7; }
+nav { display: grid; gap: 5px; margin-top: 18px; }
+nav a { padding: 8px; overflow-wrap: anywhere; border-radius: 5px; text-decoration: none; }
+nav a[aria-current="page"] { background: #205267; }
+main { min-width: 0; padding: 24px; }
+.chat-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 18px; align-items: start; }
+.panel { background: #fff; border: 1px solid #d5e0e6; border-radius: 10px; padding: 20px; min-width: 0; }
+h1, h2 { margin-top: 0; }
+form { display: grid; gap: 8px; margin-bottom: 14px; }
+input, button { font: inherit; min-width: 0; }
+input { padding: 7px; }
+button { cursor: pointer; padding: 7px 12px; background: #087170; border: 1px solid transparent; color: white; border-radius: 5px; }
+button:disabled { opacity: .55; cursor: default; }
+.secondary { background: #e9eff3; color: #183047; }
+.muted { color: #536a7c; font-size: .9rem; }
+[role="alert"] { color: #a23227; overflow-wrap: anywhere; }
+.sidebar [role="alert"] { color: #ffc3bb; }
+.document, .message { border-top: 1px solid #d5e0e6; padding: 12px 0; overflow-wrap: anywhere; }
+.badge { display: inline-block; background: #e4f1ef; padding: 2px 7px; border-radius: 5px; margin-left: 5px; font-size: .85rem; }
+.actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.messages { max-height: 65vh; overflow-y: auto; padding-right: 8px; }
+.message-text { white-space: pre-wrap; }
+.receipts { padding-left: 22px; overflow-wrap: anywhere; }
+summary { cursor: pointer; }
+@media (max-width: 950px) { .chat-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .shell { grid-template-columns: 1fr; } main { padding: 12px; } }

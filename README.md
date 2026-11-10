@@ -4,6 +4,10 @@ AgenticRAG helps users understand documents and obtain evidence-based answers. C
 
 This is a local development application. Chats persist, but the backend currently uses one shared development identity. User sign-in and authenticated multi-user access are not implemented.
 
+## Next.js migration
+
+The [Next.js frontend](frontend/README.md) supports chat navigation, saved history, and multi-file uploads with job status, retry, removal, and downloads. Use the setup in that guide to try milestones A–C alongside Streamlit.
+
 ## What the application supports
 
 - Multiple chats with persisted messages and document attachments.

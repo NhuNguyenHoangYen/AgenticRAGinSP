@@ -1,10 +1,12 @@
 """Milestone D API. Run: python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000."""
+import os
 from contextlib import asynccontextmanager
 from time import perf_counter
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import PyMongoError
 from starlette.exceptions import HTTPException
 
@@ -72,6 +74,14 @@ def create_app(settings=None):
     app = FastAPI(
         title="AgenticRAG API", version="0.5.0", lifespan=lifespan,
         description="Milestone E: Streamlit API client with scoped multi-document QA and citations. Separate ingestion worker required.",
+    )
+    origins = os.getenv("FRONTEND_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[origin.strip() for origin in origins.split(",") if origin.strip()],
+        allow_methods=["GET", "POST", "DELETE"],
+        allow_headers=["Content-Type", "X-Client-Request-ID"],
+        expose_headers=["X-Request-ID"],
     )
     app.state.settings = settings
 
