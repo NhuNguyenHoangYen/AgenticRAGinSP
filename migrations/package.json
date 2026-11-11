@@ -1,0 +1,13 @@
+{
+  "name": "agenticrag-migrations",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "db:status": "migrate-mongo status",
+    "db:up": "migrate-mongo up",
+    "db:create": "migrate-mongo create"
+  },
+  "dependencies": {
+    "migrate-mongo": "14.0.7"
+  }
+}

@@ -166,6 +166,10 @@ curl --fail http://localhost:6333/
 
 The Qdrant dashboard is at **http://localhost:6333/dashboard**. Compose-managed databases retain data in named volumes across ordinary restarts. Keep any existing database/client versions unless you deliberately plan a separate compatibility change.
 
+## Database migrations
+
+The MongoDB migration tool tracks schema and data changes per database. See the [migration setup and commands](migrations/README.md) for checking status and applying pending scripts. The [multi-chat implementation plan](docs/multi-chat-plan.md) covers rename, archive, restore, and document reuse.
+
 ## Run the application
 
 Open **three terminals**, each in the project root. Start the API first, then the worker and UI.
