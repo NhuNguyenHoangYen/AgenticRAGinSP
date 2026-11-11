@@ -106,10 +106,37 @@ class ChatRepository(RecordRepository):
              "$set": {"updated_at": utc_now()}})
         return result.modified_count == 1
 
-    async def list_owned(self, owner_id, limit, offset):
-        query = {"owner_id": owner_id, "status": "active"}
+    async def list_owned(self, owner_id, limit, offset, status="active"):
+        query = {"owner_id": owner_id, "status": status}
         cursor = self.collection.find(query).sort([("updated_at", -1), ("_id", -1)]).skip(offset).limit(limit)
-        return [await self.get_visible(item["_id"], owner_id) async for item in cursor], await self.collection.count_documents(query)
+        chats = []
+        async for item in cursor:
+            chat = await self.get_visible(item["_id"], owner_id)
+            if chat is not None and chat.status == status:
+                chats.append(chat)
+        return chats, await self.collection.count_documents(query)
+
+    async def update_active_title(self, chat_id, owner_id, title):
+        data = await self.collection.find_one_and_update(
+            {"_id": chat_id, "owner_id": owner_id, "status": "active"},
+            {"$set": {"title": title, "updated_at": utc_now()}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return ChatRecord.model_validate(data) if data else None
+
+    async def transition(self, chat_id, owner_id, expected, target):
+        data = await self.collection.find_one_and_update(
+            {"_id": chat_id, "owner_id": owner_id, "status": expected},
+            {"$set": {"status": target, "updated_at": utc_now()}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return ChatRecord.model_validate(data) if data else None
+
+    async def has_active_attachment(self, owner_id, document_id):
+        return await self.collection.find_one(
+            {"owner_id": owner_id, "status": "active", "document_ids": document_id},
+            projection={"_id": 1},
+        ) is not None
 
     async def allocate_message_sequence(self, chat_id, owner_id):
         """Atomic allocation; gaps after a failed write are valid, duplicates are not."""
@@ -173,6 +200,13 @@ class MessageRepository(RecordRepository):
 class DocumentRepository(RecordRepository):
     model = DocumentRecord
     collection_name = "documents"
+
+    async def list_reusable(self, owner_id, profile, limit, offset):
+        query = {"owner_id": owner_id, "status": "ready", "index.embedding_profile": profile}
+        cursor = self.collection.find(query).sort(
+            [("created_at", -1), ("_id", -1)]
+        ).skip(offset).limit(limit)
+        return [DocumentRecord.model_validate(item) async for item in cursor], await self.collection.count_documents(query)
 
     async def get_many_owned(self, document_ids, owner_id):
         cursor = self.collection.find({"_id": {"$in": document_ids}, "owner_id": owner_id})

@@ -19,6 +19,23 @@ class CreateChatRequest(RequestModel):
     title: str = Field(default="New chat", min_length=1, max_length=120)
 
 
+class RenameChatRequest(RequestModel):
+    title: str = Field(min_length=1, max_length=120)
+
+
+class ReusableDocumentResponse(ResponseModel):
+    id: str
+    filename: str
+    file_type: str
+
+
+class ReusableDocumentPage(ResponseModel):
+    items: list[ReusableDocumentResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 class UserResponse(ResponseModel):
     id: str
     display_name: str

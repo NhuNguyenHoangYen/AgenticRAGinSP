@@ -5,7 +5,9 @@ import { api, contentUrl, errorText, type DocumentItem, type Message } from "../
 
 import { QuestionComposer } from "./question-composer";
 
-export function MessageList({ chatId, documents }: { chatId: string; documents: DocumentItem[] }) {
+export function MessageList({ chatId, documents, readOnly }: {
+  chatId: string; documents: DocumentItem[]; readOnly: boolean;
+}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ export function MessageList({ chatId, documents }: { chatId: string; documents: 
         </details>)}
       </article>)}
     </div>
-    <QuestionComposer chatId={chatId} documents={documents} pending={pending || loading || !!error}
-      onSettled={() => { setLoading(true); setRevision(value => value + 1); }} />
+    {!readOnly && <QuestionComposer chatId={chatId} documents={documents} pending={pending || loading || !!error}
+      onSettled={() => { setLoading(true); setRevision(value => value + 1); }} />}
   </section>;
 }

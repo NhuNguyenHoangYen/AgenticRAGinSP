@@ -5,7 +5,8 @@
   "scripts": {
     "db:status": "migrate-mongo status",
     "db:up": "migrate-mongo up",
-    "db:create": "migrate-mongo create"
+    "db:create": "migrate-mongo create",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "migrate-mongo": "14.0.7"

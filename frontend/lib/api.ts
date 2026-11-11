@@ -2,7 +2,9 @@ const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000"
 export const contentUrl = (id: string) => `${baseUrl}/api/v1/documents/${encodeURIComponent(id)}/content`;
 const chatPath = (id: string) => `/chats/${encodeURIComponent(id)}`;
 
-export type Chat = { id: string; title: string };
+export type ChatStatus = "active" | "archived";
+export type Chat = { id: string; title: string; status: ChatStatus };
+export type ReusableDocument = { id: string; filename: string; file_type: string };
 export type DocumentItem = {
   document_id: string; filename: string; status: string;
   chunk_count: number | null; ingestion_job_id: string | null;
@@ -67,10 +69,11 @@ async function request<T>(path: string, init: RequestInit = {}, signal?: AbortSi
   }
 }
 
-async function items<T>(path: string, signal?: AbortSignal) {
+async function items<T>(path: string, signal?: AbortSignal, filters: Record<string, string> = {}) {
   const result: T[] = [];
   for (let offset = 0; offset <= 10000;) {
-    const page = await request<Page<T>>(`${path}?limit=100&offset=${offset}`, {}, signal);
+    const params = new URLSearchParams({ ...filters, limit: "100", offset: String(offset) });
+    const page = await request<Page<T>>(`${path}?${params}`, {}, signal);
     result.push(...page.items);
     offset += page.items.length;
     if (offset >= page.total || !page.items.length) return result;
@@ -79,7 +82,19 @@ async function items<T>(path: string, signal?: AbortSignal) {
 }
 
 export const api = {
-  chats: (signal?: AbortSignal) => items<Chat>("/chats", signal),
+  chats: (signal?: AbortSignal, status: ChatStatus = "active") => items<Chat>("/chats", signal, { status }),
+  chat: (id: string, signal?: AbortSignal) => request<Chat>(chatPath(id), {}, signal),
+  renameChat: (id: string, title: string) => request<Chat>(chatPath(id), {
+    method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }),
+  }),
+  setArchived: (id: string, archived: boolean) => request<Chat>(
+    `${chatPath(id)}/${archived ? "archive" : "restore"}`, { method: "POST" },
+  ),
+  reusableDocuments: (signal?: AbortSignal) => items<ReusableDocument>("/documents/reusable", signal),
+  attach: (id: string, documentId: string) => request<{changed: boolean}>(`${chatPath(id)}/attachments`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ document_id: documentId, ready_only: true }),
+  }),
   createChat: (title: string) => request<Chat>("/chats", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }),
   }),

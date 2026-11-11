@@ -1,5 +1,5 @@
 """Chat foundation workflows, independent of FastAPI and Streamlit rendering."""
-from src.services.errors import AttachmentInconsistent, ChatNotFound
+from src.services.errors import AttachmentInconsistent, ChatNotFound, WorkflowError
 from src.models.records import ChatRecord
 from src.observability import get_logger
 
@@ -16,9 +16,9 @@ class ChatService:
         log.info("chat.created", created_chat_id=chat.id)
         return chat
 
-    async def list(self, owner_id, limit, offset):
+    async def list(self, owner_id, limit, offset, status="active"):
         with log.operation("chat.list", limit=limit, offset=offset):
-            items, total = await self.repositories.chats.list_owned(owner_id, limit, offset)
+            items, total = await self.repositories.chats.list_owned(owner_id, limit, offset, status)
         log.info("chat.listed", returned_count=len(items), total=total)
         return items, total
 
@@ -29,6 +29,25 @@ class ChatService:
             raise ChatNotFound()
         log.debug("chat.loaded", loaded_chat_id=chat.id)
         return chat
+
+    async def rename(self, owner_id, chat_id, title):
+        chat = await self.repositories.chats.update_active_title(chat_id, owner_id, title)
+        if chat is None:
+            await self.get(owner_id, chat_id)
+            raise WorkflowError("chat_not_active", "Restore the chat before renaming it")
+        log.info("chat.renamed", renamed_chat_id=chat_id)
+        return chat
+
+    async def set_archived(self, owner_id, chat_id, archived):
+        expected, target = ("active", "archived") if archived else ("archived", "active")
+        chat = await self.repositories.chats.transition(chat_id, owner_id, expected, target)
+        if chat is not None:
+            log.info("chat.status_changed", changed_chat_id=chat_id, status=target)
+            return chat
+        chat = await self.get(owner_id, chat_id)
+        if chat.status == target:
+            return chat
+        raise WorkflowError("chat_status_conflict", "The chat status changed. Refresh and try again.")
 
     async def messages(self, owner_id, chat_id, limit, offset):
         chat=await self.get(owner_id,chat_id)

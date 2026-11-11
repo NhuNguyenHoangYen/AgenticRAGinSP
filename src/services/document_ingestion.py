@@ -33,14 +33,26 @@ class DocumentIngestionService:
             raise WorkflowError('chat_not_active', 'Chat is not active')
         return chat
 
-    async def attach(self, owner_id, chat_id, document_id):
+    async def reusable_documents(self, owner_id, limit, offset):
+        return await self.repositories.documents.list_reusable(
+            owner_id, self.pipeline.embedding_profile, limit, offset,
+        )
+
+    async def attach(self, owner_id, chat_id, document_id, *, ready_only=False):
         await self.require_active_chat(owner_id, chat_id)
         document = await self.repositories.documents.get_owned(document_id, owner_id)
         if document is None:
             raise WorkflowError('document_not_found', 'Document not found')
+        if ready_only:
+            if document.status != 'ready' or document.index is None:
+                raise WorkflowError('document_not_ready', 'Wait for the document to become ready')
+            if document.index.embedding_profile != self.pipeline.embedding_profile:
+                raise WorkflowError('embedding_profile_changed', 'The document uses a different embedding profile')
         changed = await self.repositories.chats.attach(chat_id, owner_id, document_id)
-        current = await self.require_active_chat(owner_id, chat_id)
-        if document_id not in current.document_ids:
+        current = await ChatService(self.repositories).get(owner_id, chat_id)
+        if not changed and current.status != 'active':
+            raise WorkflowError('chat_not_active', 'Chat is not active')
+        if not changed and document_id not in current.document_ids:
             raise WorkflowError('attachment_limit', 'The chat supports at most 100 attached documents')
         try:
             await self.repositories.attachments.project_attachment(chat_id, owner_id, document_id, refresh=changed)
@@ -58,6 +70,9 @@ class DocumentIngestionService:
         if await self.repositories.documents.get_owned(document_id, owner_id) is None:
             raise WorkflowError('document_not_found', 'Document not found')
         changed = await self.repositories.chats.detach(chat_id, owner_id, document_id)
+        if not changed:
+            await self.require_active_chat(owner_id, chat_id)
+            return False
         try:
             await self.repositories.attachments.remove_for_document(chat_id, owner_id, document_id)
         except Exception:
@@ -107,6 +122,8 @@ class DocumentIngestionService:
             raise WorkflowError('job_not_found', 'Ingestion job not found')
         if job.status != 'failed' or job.non_retryable:
             raise WorkflowError('job_not_retryable', 'Retry failed processing jobs after resolving the cause; upload corrected content for invalid files')
+        if not await self.repositories.chats.has_active_attachment(owner_id, job.document_id):
+            raise WorkflowError('chat_not_active', 'Attach the document to an active chat before retrying')
         retried = await self.repositories.jobs.retry_failed(job, self.settings.ingestion_max_attempts)
         if retried is None:
             raise WorkflowError('job_not_retryable', 'Job state changed; refresh its status')

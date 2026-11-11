@@ -27,3 +27,10 @@ You can retry recoverable failures, remove attachments and download originals.
 Open a saved chat by URL and ask a question after its documents become ready.
 Choose all ready documents or a subset. Comparison requires at least two ready documents
 and one passage slot per source. The conversation refreshes after each question.
+
+## Chat management
+
+Use the sidebar filter to open active or archived chats. Open a chat to rename it,
+archive it, or restore it. Archived chats allow reading history and downloading sources.
+Use **Add an indexed document** to reuse one of your ready documents with a compatible
+embedding profile. See the [multi-chat plan and tests](../docs/multi-chat-plan.md).

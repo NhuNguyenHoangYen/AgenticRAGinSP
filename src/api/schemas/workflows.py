@@ -56,6 +56,7 @@ class BatchUploadResponse(ResponseModel):
 
 class AttachDocumentRequest(RequestModel):
     document_id: str = Field(min_length=1, max_length=128)
+    ready_only: bool = False
 
 
 class AttachmentChangeResponse(ResponseModel):

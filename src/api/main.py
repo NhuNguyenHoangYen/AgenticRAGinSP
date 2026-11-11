@@ -79,7 +79,7 @@ def create_app(settings=None):
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[origin.strip() for origin in origins.split(",") if origin.strip()],
-        allow_methods=["GET", "POST", "DELETE"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "X-Client-Request-ID"],
         expose_headers=["X-Request-ID"],
     )
@@ -124,7 +124,7 @@ def create_app(settings=None):
     @app.exception_handler(ServiceError)
     async def handle_service_error(request, error):
         status_code = {
-            "chat_not_found": 404, "attachment_inconsistent": 409, "chat_not_active": 409,
+            "chat_not_found": 404, "attachment_inconsistent": 409, "chat_not_active": 409, "chat_status_conflict": 409,
             "single_document_limit": 409, "chat_changed": 409, "document_required": 409,
             "document_not_ready": 409, "embedding_profile_changed": 409,
             "invalid_document": 422, "ingestion_failed": 503, "generation_failed": 503,

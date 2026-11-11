@@ -38,3 +38,9 @@ summary { cursor: pointer; }
 .composer select, .composer textarea { font: inherit; padding: 6px; }
 .composer textarea { width: 100%; resize: vertical; }
 .source-options { display: grid; gap: 4px; max-height: 12rem; overflow: auto; overflow-wrap: anywhere; }
+.chat-header { margin-bottom: 18px; }
+.rename-form { display: flex; flex-wrap: wrap; align-items: center; }
+.chat-filter { display: grid; gap: 4px; margin-top: 12px; }
+.chat-filter select { font: inherit; }
+.document-library { margin-bottom: 12px; }
+.document-library li { overflow-wrap: anywhere; margin-bottom: 8px; }

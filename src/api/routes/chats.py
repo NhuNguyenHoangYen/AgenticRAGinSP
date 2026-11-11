@@ -1,11 +1,11 @@
 """Thin chat routes; document upload and generation arrive in later milestones."""
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
 
 from src.api.dependencies import get_chat_service, get_current_user
 from src.api.schemas.foundation import (
-    ChatPage, ChatResponse, CreateChatRequest, DocumentPage, MessagePage, UserResponse,
+    ChatPage, ChatResponse, CreateChatRequest, DocumentPage, MessagePage, RenameChatRequest, UserResponse,
 )
 
 router = APIRouter()
@@ -26,14 +26,31 @@ async def create_chat(body: CreateChatRequest, user=Depends(get_current_user), s
 
 @router.get("/chats", response_model=ChatPage, tags=["chats"])
 async def list_chats(limit: Limit = 20, offset: Offset = 0,
+                     chat_status: Annotated[Literal["active", "archived"], Query(alias="status")] = "active",
                      user=Depends(get_current_user), service=Depends(get_chat_service)):
-    items, total = await service.list(user.id, limit, offset)
+    items, total = await service.list(user.id, limit, offset, chat_status)
     return dict(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/chats/{chat_id}", response_model=ChatResponse, tags=["chats"])
 async def get_chat(chat_id: str, user=Depends(get_current_user), service=Depends(get_chat_service)):
     return await service.get(user.id, chat_id)
+
+
+@router.patch("/chats/{chat_id}", response_model=ChatResponse, tags=["chats"])
+async def rename_chat(chat_id: str, body: RenameChatRequest,
+                      user=Depends(get_current_user), service=Depends(get_chat_service)):
+    return await service.rename(user.id, chat_id, body.title)
+
+
+@router.post("/chats/{chat_id}/archive", response_model=ChatResponse, tags=["chats"])
+async def archive_chat(chat_id: str, user=Depends(get_current_user), service=Depends(get_chat_service)):
+    return await service.set_archived(user.id, chat_id, True)
+
+
+@router.post("/chats/{chat_id}/restore", response_model=ChatResponse, tags=["chats"])
+async def restore_chat(chat_id: str, user=Depends(get_current_user), service=Depends(get_chat_service)):
+    return await service.set_archived(user.id, chat_id, False)
 
 
 @router.get("/chats/{chat_id}/messages", response_model=MessagePage, tags=["messages"])

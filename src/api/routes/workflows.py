@@ -4,6 +4,9 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 from fastapi.responses import FileResponse
 
+from src.api.routes.chats import Limit, Offset
+from src.api.schemas.foundation import ReusableDocumentPage
+
 from src.api.dependencies import get_current_user, get_ingestion_service, get_qa_service, get_repositories
 from src.api.errors import APIError
 from src.api.schemas.workflows import (
@@ -72,10 +75,17 @@ async def upload_documents(chat_id: str, request: Request,
             await upload.close()
 
 
+@router.get('/documents/reusable', response_model=ReusableDocumentPage, tags=['documents'])
+async def reusable_documents(limit: Limit = 20, offset: Offset = 0,
+                             user=Depends(get_current_user), service=Depends(get_ingestion_service)):
+    items, total = await service.reusable_documents(user.id, limit, offset)
+    return dict(items=items, total=total, limit=limit, offset=offset)
+
+
 @router.post('/chats/{chat_id}/attachments',response_model=AttachmentChangeResponse,tags=['documents'])
 async def attach_existing(chat_id: str,body: AttachDocumentRequest,
                           user=Depends(get_current_user),service=Depends(get_ingestion_service)):
-    changed = await service.attach(user.id,chat_id,body.document_id)
+    changed = await service.attach(user.id,chat_id,body.document_id,ready_only=body.ready_only)
     chat = await ChatService(service.repositories).get(user.id,chat_id)
     return AttachmentChangeResponse(document_id=body.document_id,changed=changed,
                                     document_set_version=chat.document_set_version)

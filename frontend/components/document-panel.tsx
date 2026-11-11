@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api, contentUrl, errorText, type DocumentItem, type Job, type Receipt } from "../lib/api";
+import { api, contentUrl, errorText, type DocumentItem, type Job, type Receipt, type ReusableDocument } from "../lib/api";
 
-export function DocumentPanel({ chatId, documents, setDocuments }: {
+export function DocumentPanel({ chatId, documents, setDocuments, readOnly }: {
   chatId: string;
   documents: DocumentItem[];
+  readOnly: boolean;
   setDocuments: (documents: DocumentItem[]) => void;
 }) {
+  const [library, setLibrary] = useState<ReusableDocument[] | null>(null);
   const [jobs, setJobs] = useState<Record<string, Job>>({});
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [files, setFiles] = useState<File[]>([]);
@@ -63,7 +65,7 @@ export function DocumentPanel({ chatId, documents, setDocuments }: {
   function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const mib = 1024 * 1024;
-    if (!files.length || busy) return;
+    if (!files.length || busy || readOnly) return;
     if (files.length > 10 || files.some(file => file.size > 50 * mib) ||
         files.reduce((size, file) => size + file.size, 0) > 100 * mib) {
       setError("Choose at most 10 files, 50 MiB per file and 100 MiB per batch.");
@@ -78,15 +80,33 @@ export function DocumentPanel({ chatId, documents, setDocuments }: {
     });
   }
 
+  const available = library?.filter(item => !documents.some(doc => doc.document_id === item.id));
+
   return <section className="panel">
     <h2>Documents</h2>
-    <form onSubmit={upload}>
+    {!readOnly && <form onSubmit={upload}>
       <label htmlFor="documents">Choose documents</label>
       <input id="documents" ref={input} type="file" multiple accept=".pdf,.docx,.txt,.md,.csv"
         disabled={busy} onChange={event => setFiles(Array.from(event.target.files ?? []))} />
       <p className="muted">10 files per batch · 50 MiB each · 100 MiB total</p>
       <button disabled={busy || !files.length}>{busy ? "Working…" : "Add selected files"}</button>
-    </form>
+    </form>}
+    {!readOnly && <div className="document-library">
+      <button className="secondary" disabled={busy} onClick={() => {
+        if (library) setLibrary(null);
+        else void mutate(async () => setLibrary(await api.reusableDocuments()));
+      }}>{library ? "Close document library" : "Add an indexed document"}</button>
+      {available && (available.length ? <ul aria-label="Reusable documents">
+          {available.map(item => <li key={item.id}>
+            {item.filename} <small>({item.id.slice(0, 8)})</small>{" "}
+            <button className="secondary" disabled={busy}
+              onClick={() => void mutate(async () => {
+                await api.attach(chatId, item.id);
+                setLibrary(null);
+              })}>Attach</button>
+          </li>)}
+        </ul> : <p className="muted">No other compatible ready documents.</p>)}
+    </div>}
     {error && <p role="alert">{error}</p>}
     {pollError && <p role="alert">{pollError}</p>}
     {receipts.length > 0 && <ul aria-label="Upload results" className="receipts">
@@ -107,9 +127,9 @@ export function DocumentPanel({ chatId, documents, setDocuments }: {
         {doc.warnings.map((warning, index) => <p key={index}>{warning}</p>)}
         <div className="actions">
           <a href={contentUrl(doc.document_id)}>Download original</a>
-          {job?.status === "failed" && !job.non_retryable && doc.ingestion_job_id &&
+          {!readOnly && job?.status === "failed" && !job.non_retryable && doc.ingestion_job_id &&
             <button className="secondary" disabled={busy} onClick={() => void mutate(() => api.retry(doc.ingestion_job_id!))}>Retry</button>}
-          <button className="secondary" disabled={busy} onClick={() => void mutate(() => api.detach(chatId, doc.document_id))}>Remove from chat</button>
+          {!readOnly && <button className="secondary" disabled={busy} onClick={() => void mutate(() => api.detach(chatId, doc.document_id))}>Remove from chat</button>}
         </div>
       </article>;
     })}
