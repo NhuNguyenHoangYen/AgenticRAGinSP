@@ -4,10 +4,6 @@ AgenticRAG helps users understand documents and obtain evidence-based answers. C
 
 This is a local development application. Chats persist, but the backend currently uses one shared development identity. User sign-in and authenticated multi-user access are not implemented.
 
-## Next.js migration
-
-The [Next.js frontend](frontend/README.md) supports chat navigation, saved history, and multi-file uploads with job status, retry, removal, and downloads. Use the setup in that guide to try milestones A–C alongside Streamlit.
-
 ## What the application supports
 
 - Multiple chats with persisted messages and document attachments.
@@ -17,7 +13,7 @@ The [Next.js frontend](frontend/README.md) supports chat navigation, saved histo
 - Questions across all ready documents or explicitly selected documents.
 - A comparison mode that reserves evidence capacity for each scoped document.
 - Citations identifying the document, supporting quote, and page or section.
-- Original-file downloads and a bounded PDF preview, including cited pages.
+- Original-file downloads from the document panel and citations.
 - Removing a document from a chat while retaining historical citations and originals.
 - Configurable OpenAI, Azure OpenAI or Cohere answer generation, independent of the embedding provider.
 - Rotating structured operational logs and optional evaluation captures.
@@ -28,7 +24,7 @@ Documents need extractable text. Scanned/image-only documents require OCR before
 
 ```mermaid
 flowchart LR
-    UI[Streamlit UI] -->|HTTP requests| API[FastAPI]
+    UI[Next.js UI] -->|HTTP requests| API[FastAPI]
     API --> DB[(MongoDB)]
     API --> Files[Local original files]
     Worker[Ingestion worker] -->|Claim jobs and publish status| DB
@@ -42,11 +38,11 @@ flowchart LR
 
 **Ingestion:** upload → save original and queue job → worker validates/parses → recursive text splitting → embeddings → Qdrant → document marked ready.
 
-**Question answering:** freeze the selected document/index scope → retrieve passages within that scope → assemble evidence and scoped conversation history → generate an answer → validate citation labels and quotes → persist the result → display it in Streamlit. The agent can refine retrieval within the same scope and evidence budget.
+**Question answering:** freeze the selected document/index scope → retrieve passages within that scope → assemble evidence and scoped conversation history → generate an answer → validate citation labels and quotes → persist the result → display it in Next.js. The agent can refine retrieval within the same scope and evidence budget.
 
 | Component | Responsibility | Default local address |
 | --- | --- | --- |
-| Streamlit | Upload controls, chat navigation, document selection and answer display | `http://localhost:8501` |
+| Next.js | Upload controls, chat navigation, document selection and answer display | `http://localhost:3000` |
 | FastAPI | Application services, access checks, document/chat APIs and QA | `http://127.0.0.1:8000` |
 | Ingestion worker | Background parsing, embeddings, indexing and job recovery | Separate Python process |
 | MongoDB | Chats, messages, document metadata, attachments and jobs | `mongodb://127.0.0.1:27017` |
@@ -57,7 +53,8 @@ The UI does not connect directly to databases or model providers. The API and wo
 
 ## Prerequisites
 
-- Python **3.11**: the dependency sets were verified with this Python version.
+- Python **3.11** for the API and worker.
+- Node.js **22 or later** with npm for Next.js.
 - Docker Desktop running, with Docker Compose available, or separately running compatible MongoDB and Qdrant services.
 - Credentials for one supported chat provider and access to a chat model supporting tool calling.
 - Internet access for dependency installation, provider requests and the first Hugging Face model download when uncached.
@@ -84,15 +81,18 @@ python3.11 -m venv .venv-api
 .venv-api/bin/python -m pip install --upgrade pip
 .venv-api/bin/python -m pip install -r requirements-backend.txt
 
-# Lightweight Streamlit environment:
-python3.11 -m venv .venv-ui
-.venv-ui/bin/python -m pip install --upgrade pip
-.venv-ui/bin/python -m pip install -r requirements-ui.txt
 ```
 
-`requirements-backend.txt` includes `requirements-rag.txt` for the provider, parsing and embedding stack. `requirements-ui.txt` contains the frontend dependencies. Use these files for the current application; the older `requirements.txt` is a legacy environment snapshot and includes platform-specific packages.
+Install the frontend dependencies from the project root.
 
-Activation is optional because these commands explicitly select the environment's Python. This avoids installing packages into one environment and running another. Keep `.env`, local documents, generated data and virtual-environment folders out of commits, including `.venv-ui/`.
+```bash
+cd frontend
+npx --yes pnpm@11.25.0 install --frozen-lockfile
+cd ..
+```
+
+The backend requirements include the provider, parsing, and embedding stack. See the [frontend setup guide](frontend/README.md) for Node.js and API configuration.
+
 
 ### 3. Configure `.env`
 
@@ -119,7 +119,6 @@ MONGODB_URI=mongodb://127.0.0.1:27017
 MONGODB_DATABASE=agentic_rag
 UPLOAD_DIR=var/uploads
 APP_ENV=development
-API_BASE_URL=http://127.0.0.1:8000
 ```
 
 Choose a tool-capable model available to your provider account. The shown model name is the repository default. The Hugging Face embedding model runs locally and may download weights on first use; the selected chat provider receives retrieved evidence for answer generation.
@@ -140,7 +139,7 @@ For **Cohere** answers, set `LLM_PROVIDER=cohere`, `COHERE_API_KEY` and `COHERE_
 
 The backend uses `API_QDRANT_COLLECTION_PREFIX` plus an embedding-profile hash for its collections. `QDRANT_COLLECTION_NAME` in the template belongs to the older direct path and does not choose the current backend collection. Changing embedding settings does not automatically migrate existing documents: keep the API/worker settings aligned and upload documents under the intended profile.
 
-All processes load `.env` from the project root; existing shell environment variables take precedence. Restart the affected processes after configuration changes. Keys and model settings are configured here, not in the Streamlit sidebar. Some template comments still refer to the older UI; the instructions above describe the current application.
+The API and worker load the project-root `.env`. Restart them after changing backend settings. To point Next.js at a different API address, set `NEXT_PUBLIC_API_BASE_URL` in `frontend/.env.local` and restart Next.js. Configure `FRONTEND_ORIGINS` on FastAPI when using a different frontend origin.
 
 ### 4. Start the databases
 
@@ -183,19 +182,20 @@ Open **three terminals**, each in the project root. Start the API first, then th
 .venv-api/bin/python -m src.workers.ingestion
 ```
 
-**Terminal 3 — Streamlit**
+**Terminal 3 — Next.js**
 
 ```bash
-.venv-ui/bin/python -m streamlit run src/app.py
+cd frontend
+npx --yes pnpm@11.25.0 dev
 ```
 
-Open **http://localhost:8501**. API documentation is at **http://127.0.0.1:8000/docs**.
+Open **http://localhost:3000**. API documentation is at **http://127.0.0.1:8000/docs**.
 
 The API does not launch the worker automatically. Uploads can be accepted while the worker is stopped, but they remain queued until a matching worker starts. Start with one worker locally.
 
-For later runs, you only need to start Docker/the database containers and these three processes; dependency installation is a one-time setup unless requirements change. Stop Python processes with `Ctrl+C`. For Compose-managed databases, `docker compose stop` stops containers without deleting their volumes. Avoid `docker compose down -v` when you want to preserve data.
+For later runs, you only need to start Docker/the database containers and these three processes; dependency installation is a one-time setup unless requirements change. Stop the app processes with `Ctrl+C`. For Compose-managed databases, `docker compose stop` stops containers without deleting their volumes. Avoid `docker compose down -v` when you want to preserve data.
 
-**Windows:** use Python 3.11 and create environments with `py -3.11 -m venv .venv-api` and `py -3.11 -m venv .venv-ui`. Replace `.venv-api/bin/python` and `.venv-ui/bin/python` in the commands with `.venv-api\Scripts\python.exe` and `.venv-ui\Scripts\python.exe`. Use `Copy-Item .env.example .env` only if `.env` is absent. The current verification was performed on macOS; Windows setup has not been verified here.
+**Windows:** create the API environment with `py -3.11 -m venv .venv-api` and use `.venv-api\Scripts\python.exe` in the backend commands. Run the same frontend commands in PowerShell. The setup was verified on macOS.
 
 ## First conversation
 
@@ -204,12 +204,12 @@ For later runs, you only need to start Docker/the database containers and these 
 3. Wait for processing to finish. Status is polled every four seconds. Ready documents can be queried while another file is still processing or has failed.
 4. Choose **All ready documents** or **Select documents** for the question.
 5. Choose `general` or `comparison`, then set the maximum evidence passages. Comparison needs at least two ready documents and at least one evidence passage per document.
-6. Ask a question. Expand citations to inspect quotes, document IDs and page/section locations. Use **Load original file** for a download or bounded PDF preview.
+6. Ask a question. Expand citations to inspect quotes, document IDs and page/section locations. Use **Download source** to open the original separately.
 7. Add more files later using the same upload button, or **Remove from chat** to exclude a document from subsequent questions.
 
 Example questions: “Summarize the main findings with citations,” “How do the two reports differ?” or “According to the selected document, what evidence supports this conclusion?”
 
-Use the chat selector to reopen saved conversations. The `?chat=CHAT_ID` URL restores a chat after reload. Removal detaches a document; it does not delete its originals/vectors or rewrite past answers. An answer already in progress uses its frozen source snapshot. Other file formats offer original downloads; inline previews are limited to one PDF page and PDFs up to 10 MiB.
+Use the sidebar to reopen saved conversations. The `/chats/CHAT_ID` URL restores a chat after reload. Removing an attachment excludes it from subsequent questions and preserves historical citations. An answer already in progress uses its frozen source snapshot.
 
 Default upload limits are **10 files / 100 MiB per batch**, **50 MiB per file** and **100 attachments per chat**. `UPLOAD_MAX_FILES` and `UPLOAD_BATCH_BYTES` configure backend batch limits; the current UI enforces the default 10-file/100-MiB limits. Parsing failures are shown per file; retryable processing failures expose **Retry processing**.
 
@@ -225,9 +225,9 @@ curl --fail http://localhost:6333/
 
 | Symptom | What to check |
 | --- | --- |
-| `streamlit: command not found` | Use `.venv-ui/bin/python -m streamlit run src/app.py`. Install `requirements-ui.txt` with that same interpreter. |
+| `node` or `npm` is missing | Install Node.js 22 or later with npm, then reopen your terminal. |
 | `No module named src` | Launch from the repository root using the commands above. Avoid running internal service modules as standalone files. |
-| UI cannot reach API | Start FastAPI and verify `API_BASE_URL` and `/health`. Check the API terminal for startup errors. |
+| UI cannot reach API | Start FastAPI and verify `NEXT_PUBLIC_API_BASE_URL` and `/health`. Check the API terminal for startup errors. |
 | API fails on MongoDB startup | Start MongoDB, verify `MONGODB_URI`, and inspect `docker compose logs --tail=100 mongodb` if Compose-managed. |
 | Documents stay queued | Start the worker; check its logs and ensure it uses the same database, upload directory and embedding profile as the API. |
 | Embedding is slow on first use | Hugging Face weights may be downloading. Check worker logs and network access before retrying. |
@@ -237,7 +237,7 @@ curl --fail http://localhost:6333/
 | Upload or question timed out | Refresh documents/conversation first. The server may have saved the operation; the UI does not automatically replay uncertain mutations. |
 | Missing provider key or deployment error | Check the selected provider's `.env` values and the API logs; restart API/worker after changes. |
 | Citation validation error | Inspect the request ID and logs. OpenAI/Azure use JSON mode, and malformed answer formats receive one bounded repair attempt using the same evidence. Repaired output must still pass citation checks; invalid citations are not served as a successful answer. Restart FastAPI after pulling this fix. |
-| Port already in use | Reuse or stop the existing service. If changing the API port, update `API_BASE_URL` and restart the UI. |
+| Port already in use | Reuse or stop the existing service. If changing the API port, update `NEXT_PUBLIC_API_BASE_URL` and restart the UI. |
 
 ## Logging and stored data
 
@@ -258,8 +258,7 @@ Operational logs rotate using `LOG_MAX_BYTES` (default 10 MiB) and `LOG_BACKUP_C
 
 | Path | Responsibility |
 | --- | --- |
-| `src/app.py` | Streamlit entry point |
-| `src/ui/` | API client, page composition, document controls, conversation and previews |
+| `frontend/` | Next.js pages, document controls, question composer, and API client |
 | `src/api/` | FastAPI routes, request/response contracts, settings and error handling |
 | `src/services/` | Ingestion, QA, scope resolution, retrieval and citation validation |
 | `src/workers/ingestion.py` | Durable background processing and retries |
@@ -272,7 +271,7 @@ Operational logs rotate using `LOG_MAX_BYTES` (default 10 MiB) and `LOG_BACKUP_C
 
 ## Verification and current boundaries
 
-Milestones A–E are implemented. The UI/API flow was checked using Streamlit AppTest, real local MongoDB/Qdrant, deterministic embeddings and an offline tool-capable LLM. Those checks cover uploads, failed-file isolation, selection, comparison, citations, removal, chat recovery and request correlation; they do not establish live-provider answer quality.
+The Next.js production build and local API workflow were verified with deterministic embeddings and an offline LLM. The workflow covers uploads, job outcomes, question submission, saved citations, downloads, and detachment.
 
 Citation validation checks labels and quote provenance, not semantic correctness of every claim. Authenticated multi-user access, automatic physical data cleanup, OCR and token streaming remain outside the current implementation.
 

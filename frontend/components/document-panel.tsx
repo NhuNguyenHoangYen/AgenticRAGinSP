@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, contentUrl, errorText, type DocumentItem, type Job, type Receipt } from "../lib/api";
 
-export function DocumentPanel({ chatId }: { chatId: string }) {
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+export function DocumentPanel({ chatId, documents, setDocuments }: {
+  chatId: string;
+  documents: DocumentItem[];
+  setDocuments: (documents: DocumentItem[]) => void;
+}) {
   const [jobs, setJobs] = useState<Record<string, Job>>({});
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [files, setFiles] = useState<File[]>([]);
@@ -42,7 +45,7 @@ export function DocumentPanel({ chatId }: { chatId: string }) {
     }
     void refresh();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [chatId, revision]);
+  }, [chatId, revision, setDocuments]);
 
   async function mutate(action: () => Promise<unknown>) {
     setBusy(true);

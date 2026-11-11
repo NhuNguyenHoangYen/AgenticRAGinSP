@@ -11,6 +11,13 @@ export type DocumentItem = {
 export type Job = { status: string; stage: string; completed: number; total: number; attempt: number; max_attempts: number; non_retryable: boolean; error: string | null };
 export type Citation = { label: string; filename: string; document_id: string; page: number | null; section: string | null; quote: string; attached: boolean };
 export type Message = { id: string; role: string; content: string; status: string; citations: Citation[]; answer_warnings: string[] };
+export type Question = {
+  question: string;
+  scope_mode: "all_ready" | "selected";
+  document_ids: string[];
+  strategy: "general" | "comparison";
+  k: number;
+};
 export type Receipt = { filename: string; status: string; error: string | null; deduplicated: boolean };
 type Page<T> = { items: T[]; total: number };
 
@@ -78,6 +85,9 @@ export const api = {
   }),
   documents: (id: string, signal?: AbortSignal) => items<DocumentItem>(`${chatPath(id)}/documents`, signal),
   messages: (id: string, signal?: AbortSignal) => items<Message>(`${chatPath(id)}/messages`, signal),
+  ask: (id: string, question: Question) => request<{ turn_id: string }>(`${chatPath(id)}/messages`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(question),
+  }),
   upload: (id: string, files: File[]) => {
     const body = new FormData();
     files.forEach(file => body.append("files", file));

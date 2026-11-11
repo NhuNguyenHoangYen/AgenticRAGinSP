@@ -1,10 +1,6 @@
-import { DocumentPanel } from "../../../components/document-panel";
-import { MessageList } from "../../../components/message-list";
+import { ChatWorkspace } from "../../../components/chat-workspace";
 
 export default async function ChatPage({ params }: { params: Promise<{chatId: string}> }) {
   const { chatId } = await params;
-  return <div className="chat-grid" key={chatId}>
-    <DocumentPanel chatId={chatId} />
-    <MessageList chatId={chatId} />
-  </div>;
+  return <ChatWorkspace key={chatId} chatId={chatId} />;
 }

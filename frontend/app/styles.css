@@ -31,3 +31,10 @@ button:disabled { opacity: .55; cursor: default; }
 summary { cursor: pointer; }
 @media (max-width: 950px) { .chat-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .shell { grid-template-columns: 1fr; } main { padding: 12px; } }
+.composer { border-top: 1px solid #d5e0e6; padding-top: 14px; }
+.composer fieldset { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.composer-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.composer-options label { display: grid; gap: 3px; }
+.composer select, .composer textarea { font: inherit; padding: 6px; }
+.composer textarea { width: 100%; resize: vertical; }
+.source-options { display: grid; gap: 4px; max-height: 12rem; overflow: auto; overflow-wrap: anywhere; }

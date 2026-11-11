@@ -1,5 +1,0 @@
-# Lightweight frontend only; provider/vector/database dependencies belong to the backend.
-streamlit==1.45.0
-streamlit-pdf-viewer==0.0.22
-httpx==0.28.1
-python-dotenv>=1.1,<2

@@ -1,25 +1,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, contentUrl, errorText, type Message } from "../lib/api";
+import { api, contentUrl, errorText, type DocumentItem, type Message } from "../lib/api";
 
-export function MessageList({ chatId }: { chatId: string }) {
+import { QuestionComposer } from "./question-composer";
+
+export function MessageList({ chatId, documents }: { chatId: string; documents: DocumentItem[] }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    api.messages(chatId, controller.signal).then(items => {
-      setMessages(items);
-      setError("");
-    }).catch(error => {
-      if (!controller.signal.aborted) setError(errorText(error));
-    }).finally(() => {
-      if (!controller.signal.aborted) setLoading(false);
-    });
-    return () => controller.abort();
-  }, [chatId, revision]);
+    let timer: ReturnType<typeof setTimeout>;
+    async function refresh() {
+      try {
+        const items = await api.messages(chatId, controller.signal);
+        if (controller.signal.aborted) return;
+        setMessages(items);
+        setError("");
+        if (items.some(message => message.status === "pending" || message.status === "generating")) {
+          timer = setTimeout(refresh, 4000);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) setError(errorText(error));
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+    void refresh();
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [chatId, revision, documents]);
+  const pending = messages.some(message => message.status === "pending" || message.status === "generating");
   return <section className="panel">
     <div className="actions"><h2>Conversation history</h2>
       <button className="secondary" onClick={() => setRevision(value => value + 1)}>Refresh</button>
@@ -41,6 +53,7 @@ export function MessageList({ chatId }: { chatId: string }) {
         </details>)}
       </article>)}
     </div>
-    <p className="muted">Use Streamlit to send new questions during the migration.</p>
+    <QuestionComposer chatId={chatId} documents={documents} pending={pending || loading || !!error}
+      onSettled={() => { setLoading(true); setRevision(value => value + 1); }} />
   </section>;
 }
