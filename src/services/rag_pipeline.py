@@ -34,6 +34,8 @@ class RAGPipeline:
         self.settings = settings
         self._embedding = None
         self._lock = RLock()
+        self._chat_models = {}
+        self._chat_models_lock = RLock()
         self.embedding_profile = f"{settings.embedding_provider}:{settings.embedding_model}"
         suffix = hashlib.sha256(self.embedding_profile.encode()).hexdigest()[:12]
         self.collection = f"{settings.qdrant_collection_prefix}-{suffix}"
@@ -52,6 +54,22 @@ class RAGPipeline:
                     self._embedding = EmbeddingsFactory.create_embeddings(
                         self.settings.embedding_provider, **kwargs).get_embeddings()
         return self._embedding
+
+    def _chat_model(self, owner_id, chat_id):
+        """Initialize one provider client for each owner and chat in this process."""
+        from src.llms.llm_config import LLMConfig
+        from src.llms.llm_factory import LLMFactory
+
+        key = (owner_id, chat_id)
+        with self._chat_models_lock:
+            cached = self._chat_models.get(key)
+            if cached is None:
+                config = LLMConfig.from_env()
+                with log.operation("llm.initialize", provider=config.provider):
+                    model = LLMFactory.create_llm(config=config).get_llm()
+                cached = (config, model)
+                self._chat_models[key] = cached
+            return cached
 
     def _client(self):
         from qdrant_client import QdrantClient
@@ -88,8 +106,6 @@ class RAGPipeline:
 
     def answer(self,scope,question,history,k,evaluation_recorder=None):
         from langchain_core.messages import AIMessage,HumanMessage
-        from src.llms.llm_config import LLMConfig
-        from src.llms.llm_factory import LLMFactory
         from src.observability.callbacks import AgentLoggingCallback
         from src.services.retrieval import RetrievalSession,ScopedRetriever
         from src.services.scoped_agent import ScopedQAAgent
@@ -97,7 +113,7 @@ class RAGPipeline:
         from src.services.errors import WorkflowError
         from src.services.contracts import DocumentCoverage
 
-        config=LLMConfig.from_env()
+        config, model = self._chat_model(scope.owner_id, scope.chat_id)
         configuration=dict(provider=config.provider,model=config.model_name,deployment=config.deployment,
             prompt_version=PROMPT_VERSION,embedding_profile=self.embedding_profile,k=k,
             scope_mode=scope.scope_mode,strategy=scope.strategy,
@@ -109,8 +125,7 @@ class RAGPipeline:
             session=RetrievalSession(scope,client,self.embeddings())
             retriever=ScopedRetriever(session=session)
             messages=[(HumanMessage if message.role=='user' else AIMessage)(content=message.content) for message in history]
-            wrapper=LLMFactory.create_llm(config=config)
-            agent=ScopedQAAgent(wrapper.get_llm(),retriever,scope,messages,callback,
+            agent=ScopedQAAgent(model,retriever,scope,messages,callback,
                                 json_mode=config.provider in ('openai','azure_openai'))
             try:
                 with log.operation('qa.agent_execution',**configuration):
